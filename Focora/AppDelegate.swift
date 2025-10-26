@@ -1,3 +1,10 @@
+//
+//  AppDelegate.swift
+//  Focora
+//
+//  Created by MacBoock on 21.10.2025.
+//
+
 import AppKit
 import SwiftUI
 import Carbon.HIToolbox
@@ -15,10 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let hostingView = NSHostingView(rootView: contentView)
         hostingView.translatesAutoresizingMaskIntoConstraints = false
 
-        // ✅ Делаем окно активируемым, как у Spotlight
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 600, height: 100),
-            styleMask: [.titled, .fullSizeContentView], // ← вместо .nonactivatingPanel
+            styleMask: [.titled, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -33,7 +39,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = hostingView
         window.isMovableByWindowBackground = true
 
-        // Авто-Layout
         NSLayoutConstraint.activate([
             hostingView.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor),
             hostingView.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor),
@@ -42,19 +47,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             hostingView.widthAnchor.constraint(equalToConstant: 600)
         ])
 
-        // Автоматическая высота под контент
         window.contentView?.layoutSubtreeIfNeeded()
         let fittingHeight = hostingView.fittingSize.height
         window.setContentSize(NSSize(width: 600, height: fittingHeight))
 
         self.window = window
 
-        // Горячая клавиша Option + Space
         HotKeyManager.shared.registerGlobalHotKey(
             keyCode: UInt32(kVK_Space),
             modifiers: UInt32(optionKey),
             action: { [weak self] in
-                print("🔥 Focora hotkey triggered!")
                 guard let self = self, let window = self.window else { return }
                 if window.isVisible {
                     window.orderOut(nil)
@@ -73,7 +75,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let y = screen.visibleFrame.midY - frame.height / 2
         window.setFrameOrigin(NSPoint(x: x, y: y))
 
-        // 🔥 ключевые строки:
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(window.contentView)

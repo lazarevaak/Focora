@@ -1,10 +1,3 @@
-//
-//  LauncherView.swift
-//  Focora
-//
-//  Created by MacBoock on 23.10.2025.
-//
-
 import SwiftUI
 
 struct LauncherView: View {
@@ -12,11 +5,12 @@ struct LauncherView: View {
     @EnvironmentObject var catalog: CommandCatalog
     @State private var query = ""
 
-    var filtered: [CommandItem] {
+    /// Поиск ТОЛЬКО по приложениям
+    var filteredApps: [CommandItem] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !q.isEmpty else { return catalog.items }
+        guard !q.isEmpty else { return [] }
 
-        return catalog.items
+        return catalog.apps
             .compactMap { item -> (CommandItem, Int)? in
                 let title = item.title.lowercased()
                 let keywords = item.keywords.map { $0.lowercased() }
@@ -38,7 +32,7 @@ struct LauncherView: View {
 
                 ZStack(alignment: .leading) {
                     if query.isEmpty {
-                        Text("Search apps or commands…")
+                        Text("Search apps…")
                             .foregroundColor(.white)
                             .font(.system(size: 22, weight: .medium))
                     }
@@ -48,7 +42,7 @@ struct LauncherView: View {
                         .font(.system(size: 22, weight: .medium))
                         .textFieldStyle(.plain)
                         .onSubmit {
-                            if let first = filtered.first {
+                            if let first = filteredApps.first {
                                 first.run()
                                 isVisible = false
                             }
@@ -73,68 +67,98 @@ struct LauncherView: View {
             .padding(.horizontal)
             .padding(.top, 20)
 
-            // MARK: - Results list
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(filtered.prefix(10), id: \.id) { item in
-                    Button(action: {
-                        item.run()
-                        isVisible = false
-                    }) {
-                        HStack(spacing: 12) {
-                            Image(item.icon)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 28, height: 28)
-                                .cornerRadius(6)
-                                .shadow(radius: 2, y: 1)
-
-                            highlightMatchedText(in: item.title, query: query)
-                                .font(.system(size: 17, weight: .regular))
-                                .foregroundColor(.white)
-
-                            Spacer()
+            // MARK: - Static commands (always visible)
+            if query.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(catalog.commands.enumerated()), id: \.1.id) { index, item in
+                        buttonRow(for: item)
+                        if index < catalog.commands.count - 1 {
+                            Divider().background(Color.white.opacity(0.2))
+                                .padding(.leading, 15).padding(.trailing, 15)
                         }
-                        .padding(.horizontal)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    .buttonStyle(.plain)
                 }
+            }
 
-                if filtered.isEmpty {
-                    Text("No matches found")
-                        .foregroundColor(.white.opacity(0.7))
-                        .font(.system(size: 16, weight: .regular))
-                        .padding(.horizontal)
+            // MARK: - Apps search results
+            if !query.isEmpty {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(filteredApps.prefix(15).enumerated()), id: \.1.id) { index, item in
+                        buttonRow(for: item)
+                        if index < filteredApps.prefix(15).count - 1 {
+                            Divider().background(Color.white.opacity(0.2))
+                                .padding(.leading, 15).padding(.trailing, 15)
+                        }
+                    }
+
+                    if filteredApps.isEmpty {
+                        Text("No matching apps found")
+                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 16, weight: .regular))
+                            .padding(.horizontal)
+                            .padding(.vertical, 12)
+                    }
                 }
             }
 
             Spacer(minLength: 8)
         }
         .padding(.bottom, 20)
-        .background(
-            ZStack {
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.67, green: 0.78, blue: 0.87),
-                        Color(red: 0.80, green: 0.75, blue: 0.90)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .opacity(0.95)
-                Color.white.opacity(0.05)
-            }
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.white.opacity(0.8), lineWidth: 15)
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(color: .black.opacity(0.1), radius: 20, y: 1)
-        )
+        .background(background)
         .cornerRadius(16)
     }
 
-    // MARK: - Fuzzy matching
+    // MARK: - Button builder
+    private func buttonRow(for item: CommandItem) -> some View {
+        Button(action: {
+            item.run()
+            isVisible = false
+        }) {
+            HStack(spacing: 12) {
+                Image(item.icon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 28, height: 28)
+                    .cornerRadius(6)
+                    .shadow(radius: 2, y: 1)
+
+                Text(item.title)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white)
+
+                Spacer()
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.white.opacity(0.05))
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Background
+    private var background: some View {
+        ZStack {
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 0.67, green: 0.78, blue: 0.87),
+                    Color(red: 0.80, green: 0.75, blue: 0.90)
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .opacity(0.95)
+            Color.white.opacity(0.05)
+        }
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.8), lineWidth: 15)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .shadow(color: .black.opacity(0.1), radius: 20, y: 1)
+    }
+
+    // MARK: - Fuzzy search
     private func fuzzyScore(for query: String, in texts: [String]) -> Int {
         var best = 0
         for text in texts {
@@ -152,24 +176,5 @@ struct LauncherView: View {
             best = max(best, score)
         }
         return best
-    }
-
-    // MARK: - Highlight matched text
-    private func highlightMatchedText(in text: String, query: String) -> Text {
-        guard !query.isEmpty else { return Text(text) }
-
-        let lower = text.lowercased()
-        let q = query.lowercased()
-
-        if let range = lower.range(of: q) {
-            let prefix = String(text[..<range.lowerBound])
-            let match = String(text[range])
-            let suffix = String(text[range.upperBound...])
-            return Text(prefix)
-                + Text(match).bold().foregroundColor(.accentColor)
-                + Text(suffix)
-        } else {
-            return Text(text)
-        }
     }
 }
