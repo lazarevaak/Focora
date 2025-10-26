@@ -176,5 +176,6 @@ struct LauncherView: View {
             best = max(best, score)
         }
         return best
+        
     }
 }
