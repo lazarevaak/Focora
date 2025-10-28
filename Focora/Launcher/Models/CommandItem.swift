@@ -2,7 +2,7 @@
 //  CommandItem.swift
 //  Focora
 //
-//  Created by MacBoock on 23.10.2025.
+//  Created by Alexandra Lazareva on 23.10.2025.
 //
 
 import Foundation

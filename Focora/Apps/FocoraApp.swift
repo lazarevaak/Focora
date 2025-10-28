@@ -2,7 +2,7 @@
 //  FocoraApp.swift
 //  Focora
 //
-//  Created by MacBoock on 21.10.2025.
+//  Created by Alexandra Lazareva on 21.10.2025.
 //
 
 import SwiftUI

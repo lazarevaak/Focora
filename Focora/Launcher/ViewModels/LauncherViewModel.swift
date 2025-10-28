@@ -1,22 +1,41 @@
 //
-//  CommandCatalog.swift
+//  LauncherViewModel.swift
 //  Focora
 //
-//  Created by MacBoock on 23.10.2025.
+//  Created by MacBoock on 28.10.2025.
 //
 
 import SwiftUI
-import Combine
 import AppKit
+internal import Combine
 
-final class CommandCatalog: ObservableObject {
-    // Отдельно команды и приложения
+@MainActor
+final class LauncherViewModel: ObservableObject {
+    @Published var query: String = ""
     @Published var commands: [CommandItem] = []
     @Published var apps: [CommandItem] = []
-
+    
     init() {
-        // 1️⃣ Статические команды (всегда видны)
-        self.commands = [
+        loadStaticCommands()
+        Task { await scanApplications() }
+    }
+    
+    // MARK: - Filtering
+    var filteredApps: [CommandItem] {
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !q.isEmpty else { return [] }
+        return apps
+            .compactMap { item -> (CommandItem, Int)? in
+                let score = fuzzyScore(for: q, in: [item.title.lowercased()] + item.keywords.map { $0.lowercased() })
+                return score > 0 ? (item, score) : nil
+            }
+            .sorted { $0.1 > $1.1 }
+            .map { $0.0 }
+    }
+    
+    // MARK: - Command loading
+    private func loadStaticCommands() {
+        commands = [
             CommandItem(icon: "SafariIcon", title: "Open Safari", keywords: ["safari", "browser", "apple"]) {
                 if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") {
                     NSWorkspace.shared.openApplication(at: url, configuration: .init())
@@ -43,51 +62,51 @@ final class CommandCatalog: ObservableObject {
                 }
             }
         ]
-
-        // 2️⃣ Асинхронно загружаем установленные приложения
-        Task.detached(priority: .background) {
-            let foundApps = self.scanInstalledApplications()
-            await MainActor.run {
-                self.apps = foundApps.sorted { $0.title.lowercased() < $1.title.lowercased() }
-            }
-        }
     }
-
-    // MARK: - Сканирование установленных приложений
-    private func scanInstalledApplications() -> [CommandItem] {
+    
+    // MARK: - App scanning
+    private func scanApplications() async {
         let fm = FileManager.default
-        let appDirs: [URL] = [
+        let dirs = [
             URL(fileURLWithPath: "/Applications"),
             URL(fileURLWithPath: "/System/Applications"),
             fm.homeDirectoryForCurrentUser.appendingPathComponent("Applications")
         ]
-
-        var foundApps: [CommandItem] = []
-
-        for dir in appDirs {
+        
+        var found: [CommandItem] = []
+        for dir in dirs {
             guard let enumerator = fm.enumerator(at: dir, includingPropertiesForKeys: [.isDirectoryKey]) else { continue }
-
             for case let appURL as URL in enumerator {
                 guard appURL.pathExtension == "app" else { continue }
-
                 let name = appURL.deletingPathExtension().lastPathComponent
                 let keywords = [name.lowercased()]
-                let icon = NSWorkspace.shared.icon(forFile: appURL.path)
-                icon.size = NSSize(width: 48, height: 48)
-
-                let item = CommandItem(
-                    icon: "",
-                    title: name,
-                    keywords: keywords
-                ) {
+                let item = CommandItem(icon: "", title: name, keywords: keywords) {
                     NSWorkspace.shared.openApplication(at: appURL, configuration: .init())
                 }
-
-                foundApps.append(item)
+                found.append(item)
                 enumerator.skipDescendants()
             }
         }
-
-        return foundApps
+        apps = found.sorted { $0.title.lowercased() < $1.title.lowercased() }
+    }
+    
+    // MARK: - Fuzzy scoring
+    private func fuzzyScore(for query: String, in texts: [String]) -> Int {
+        var best = 0
+        for text in texts {
+            var score = 0
+            var index = text.startIndex
+            for char in query {
+                if let found = text[index...].firstIndex(of: char) {
+                    score += 1
+                    index = text.index(after: found)
+                } else {
+                    score = 0
+                    break
+                }
+            }
+            best = max(best, score)
+        }
+        return best
     }
 }

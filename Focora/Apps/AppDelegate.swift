@@ -2,7 +2,7 @@
 //  AppDelegate.swift
 //  Focora
 //
-//  Created by MacBoock on 21.10.2025.
+//  Created by Alexandra Lazareva on 21.10.2025.
 //
 
 import AppKit
@@ -10,7 +10,7 @@ import SwiftUI
 import Carbon.HIToolbox
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private let catalog = CommandCatalog()
+    private let catalog = LauncherViewModel()
     private var window: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView = hostingView
         window.isMovableByWindowBackground = true
 
+        // Авто-Layout
         NSLayoutConstraint.activate([
             hostingView.leadingAnchor.constraint(equalTo: window.contentView!.leadingAnchor),
             hostingView.trailingAnchor.constraint(equalTo: window.contentView!.trailingAnchor),
