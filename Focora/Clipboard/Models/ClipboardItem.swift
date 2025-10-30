@@ -9,6 +9,6 @@ import Foundation
 
 struct ClipboardItem: Identifiable, Hashable {
     let id = UUID()
-        let content: String
-        let date: Date
+    let content: String
+    let date: Date
 }
