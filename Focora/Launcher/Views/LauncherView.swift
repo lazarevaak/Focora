@@ -14,6 +14,7 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 16) {
             searchField
+    
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if viewModel.query.isEmpty {
@@ -112,9 +113,9 @@ struct LauncherView: View {
         )
         .opacity(0.95)
         .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.8), lineWidth: 1.5)
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color.white.opacity(0.8), lineWidth: 8)
         )
-        .shadow(color: .black.opacity(0.2), radius: 15, y: 2)
+        .shadow(color: .black.opacity(0.2), radius: 18, y: 2)
     }
 }
