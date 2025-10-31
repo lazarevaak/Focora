@@ -1,5 +1,5 @@
 //
-//  Shell.swift
+//  LauncherView.swift
 //  Focora
 //
 //  Created by Alexandra Lazareva on 23.10.2025.
@@ -14,7 +14,7 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 16) {
             searchField
-    
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if viewModel.query.isEmpty {
@@ -46,12 +46,14 @@ struct LauncherView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.white)
+            
             ZStack(alignment: .leading) {
                 if viewModel.query.isEmpty {
                     Text("Search apps…")
                         .foregroundColor(.white.opacity(0.8))
                         .font(.system(size: 22, weight: .medium))
                 }
+                
                 TextField("", text: $viewModel.query)
                     .foregroundColor(.white)
                     .font(.system(size: 22, weight: .medium))
@@ -63,6 +65,7 @@ struct LauncherView: View {
                         }
                     }
             }
+            
             if !viewModel.query.isEmpty {
                 Button {
                     withAnimation { viewModel.query = "" }
