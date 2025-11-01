@@ -5,7 +5,7 @@
 //  Created by Alexandra Lazareva on 21.10.2025.
 //
 
-import SwiftUI
+internal import SwiftUI
 
 @main
 struct FocoraApp: App {

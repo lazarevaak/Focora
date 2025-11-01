@@ -5,7 +5,7 @@
 //  Created by MacBoock on 28.10.2025.
 //
 
-import SwiftUI
+internal import SwiftUI
 import AppKit
 internal import Combine
 
