@@ -31,7 +31,6 @@ final class HotKeyManager {
 
         actions[id] = action
 
-        // Устанавливаем обработчик один раз
         if eventHandlerRef == nil {
             InstallEventHandler(GetEventDispatcherTarget(), { _, event, userData in
                 var hotKeyID = EventHotKeyID()

@@ -5,7 +5,7 @@
 //  Created by Alexandra Lazareva on 29.10.2025.
 //
 
-import SwiftUI
+internal import SwiftUI
 
 struct ClipboardView: View {
     @ObservedObject var viewModel: ClipboardViewModel

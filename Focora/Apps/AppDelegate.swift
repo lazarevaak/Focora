@@ -6,15 +6,19 @@
 //
 
 import AppKit
-import SwiftUI
+internal import SwiftUI
 import Carbon.HIToolbox
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let catalog = LauncherViewModel()
     private let clipboardVM = ClipboardViewModel()
+    private let taskManagerVM = TaskViewModel()
+    private let pomodoroVM = PomodoroViewModel()
 
     private var launcherWindow: NSWindow?
     private var clipboardWindow: NSWindow?
+    private var taskManagerWindow: NSWindow?
+    private var pomodoroWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -56,7 +60,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         launcherWindow = window
     }
 
-
     // MARK: - Setup Clipboard Window
     private func setupClipboardWindowIfNeeded() {
         guard clipboardWindow == nil else { return }
@@ -79,6 +82,50 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         clipboardWindow = window
     }
 
+    // MARK: - Setup Task Manager Window
+    private func setupTaskManagerWindowIfNeeded() {
+        guard taskManagerWindow == nil else { return }
+
+        let view = TaskView(viewModel: taskManagerVM)
+        let hosting = NSHostingController(rootView: view)
+        
+        let window = FocusableWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 600, height: 120),
+            styleMask: [.borderless, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+
+        configureForCustomAppearance(window)
+        window.contentViewController = hosting
+        window.level = .statusBar
+        window.center()
+
+        taskManagerWindow = window
+    }
+
+    // MARK: - Setup Pomodoro Window
+    private func setupPomodoroWindowIfNeeded() {
+        guard pomodoroWindow == nil else { return }
+
+        let view = PomodoroView(viewModel: pomodoroVM)
+        let hosting = NSHostingController(rootView: view)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 260),
+            styleMask: [.borderless, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+
+        configureForCustomAppearance(window)
+        window.contentViewController = hosting
+        window.level = .statusBar
+        window.center()
+
+        pomodoroWindow = window
+    }
+
     // MARK: - Window Appearance
     private func configureForCustomAppearance(_ window: NSWindow) {
         window.isOpaque = false
@@ -94,17 +141,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentView?.wantsLayer = true
         window.contentView?.layer?.cornerRadius = 18
         window.contentView?.layer?.masksToBounds = true
-
-        if let contentView = window.contentView,
-           let superview = contentView.superview {
-            superview.wantsLayer = true
-            superview.layer?.cornerRadius = 18
-            superview.layer?.maskedCorners = [
-                .layerMinXMinYCorner, .layerMaxXMinYCorner,
-                .layerMinXMaxYCorner, .layerMaxXMaxYCorner
-            ]
-            superview.layer?.masksToBounds = true
-        }
     }
 
     // MARK: - Hotkeys
@@ -113,28 +149,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             keyCode: UInt32(kVK_Space),
             modifiers: UInt32(optionKey)
         ) { [weak self] in
-            guard let self else { return }
-            self.toggleLauncher()
+            self?.toggleLauncher()
         }
 
         HotKeyManager.shared.registerGlobalHotKey(
             keyCode: UInt32(kVK_ANSI_V),
             modifiers: UInt32(cmdKey | shiftKey)
         ) { [weak self] in
-            guard let self else { return }
-            self.toggleClipboard()
+            self?.toggleClipboard()
+        }
+
+        HotKeyManager.shared.registerGlobalHotKey(
+            keyCode: UInt32(kVK_ANSI_T),
+            modifiers: UInt32(cmdKey | optionKey)
+        ) { [weak self] in
+            self?.toggleTaskManager()
+        }
+
+        HotKeyManager.shared.registerGlobalHotKey(
+            keyCode: UInt32(kVK_ANSI_P),
+            modifiers: UInt32(cmdKey | optionKey)
+        ) { [weak self] in
+            self?.togglePomodoro()
         }
     }
 
     // MARK: - Toggle Windows
     private func toggleLauncher() {
         guard let window = launcherWindow else { return }
-
-        if window.isVisible {
-            window.orderOut(nil)
-        } else {
-            showWindow(window)
-        }
+        window.isVisible ? window.orderOut(nil) : showWindow(window)
     }
 
     private func toggleClipboard() {
@@ -151,39 +194,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Show Window + Focus Field
+    private func toggleTaskManager() {
+        setupTaskManagerWindowIfNeeded()
+        guard let window = taskManagerWindow else { return }
+
+        if taskManagerVM.isVisible {
+            window.orderOut(nil)
+            taskManagerVM.isVisible = false
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            taskManagerVM.isVisible = true
+        }
+    }
+
+    private func togglePomodoro() {
+        setupPomodoroWindowIfNeeded()
+        guard let window = pomodoroWindow else { return }
+
+        if pomodoroVM.isVisible {
+            window.orderOut(nil)
+            pomodoroVM.isVisible = false
+        } else {
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            pomodoroVM.isVisible = true
+        }
+    }
+
+    // MARK: - Common Window Helpers
     private func showWindow(_ window: NSWindow) {
         guard let screen = NSScreen.main else { return }
-
         let frame = window.frame
         let x = screen.visibleFrame.midX - frame.width / 2
         let y = screen.visibleFrame.midY - frame.height / 2
-
         window.setFrameOrigin(NSPoint(x: x, y: y))
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             self.focusFirstTextField(in: window)
         }
     }
 
     private func focusFirstTextField(in window: NSWindow) {
-        guard let contentView = window.contentView else { return }
-
         func findTextField(in view: NSView) -> NSTextField? {
-            if let tf = view as? NSTextField {
-                return tf
-            }
+            if let tf = view as? NSTextField { return tf }
             for sub in view.subviews {
-                if let found = findTextField(in: sub) {
-                    return found
-                }
+                if let found = findTextField(in: sub) { return found }
             }
             return nil
         }
 
-        if let textField = findTextField(in: contentView) {
+        if let textField = findTextField(in: window.contentView ?? NSView()) {
             window.makeFirstResponder(textField)
             textField.becomeFirstResponder()
         }

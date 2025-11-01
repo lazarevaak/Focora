@@ -5,7 +5,7 @@
 //  Created by Alexandra Lazareva on 23.10.2025.
 //
 
-import SwiftUI
+internal import SwiftUI
 
 struct LauncherView: View {
     @Binding var isVisible: Bool
@@ -14,22 +14,18 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 16) {
             searchField
-
+    
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     if viewModel.query.isEmpty {
-                        ForEach(viewModel.commands) { item in
-                            commandRow(for: item)
-                        }
+                        commandList(viewModel.commands)
                     } else {
                         if viewModel.filteredApps.isEmpty {
                             Text("No matching apps found")
                                 .foregroundColor(.white.opacity(0.7))
                                 .padding()
                         } else {
-                            ForEach(viewModel.filteredApps) { item in
-                                commandRow(for: item)
-                            }
+                            commandList(viewModel.filteredApps)
                         }
                     }
                 }
@@ -40,20 +36,20 @@ struct LauncherView: View {
         .cornerRadius(16)
         .frame(width: 600, height: 500)
     }
-    
-    // MARK: - Search field
-    private var searchField: some View {
+}
+
+// MARK: - Subviews
+private extension LauncherView {
+    var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.white)
-            
             ZStack(alignment: .leading) {
                 if viewModel.query.isEmpty {
                     Text("Search apps…")
                         .foregroundColor(.white.opacity(0.8))
                         .font(.system(size: 22, weight: .medium))
                 }
-                
                 TextField("", text: $viewModel.query)
                     .foregroundColor(.white)
                     .font(.system(size: 22, weight: .medium))
@@ -65,7 +61,6 @@ struct LauncherView: View {
                         }
                     }
             }
-            
             if !viewModel.query.isEmpty {
                 Button {
                     withAnimation { viewModel.query = "" }
@@ -81,8 +76,24 @@ struct LauncherView: View {
         .padding(.top, 20)
     }
     
+    // MARK: - Command list with separators
+    func commandList(_ items: [CommandItem]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.enumerated()), id: \.1.id) { index, item in
+                commandRow(for: item)
+                
+                if index < items.count - 1 {
+                    Divider()
+                        .background(Color.white.opacity(0.8))
+                        .padding(.leading, 56)
+                        .padding(.trailing, 24)
+                }
+            }
+        }
+    }
+
     // MARK: - Command row
-    private func commandRow(for item: CommandItem) -> some View {
+    func commandRow(for item: CommandItem) -> some View {
         Button {
             item.run()
             isVisible = false
@@ -103,9 +114,9 @@ struct LauncherView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     // MARK: - Background
-    private var background: some View {
+    var background: some View {
         LinearGradient(
             gradient: Gradient(colors: [
                 Color(red: 0.67, green: 0.78, blue: 0.87),
