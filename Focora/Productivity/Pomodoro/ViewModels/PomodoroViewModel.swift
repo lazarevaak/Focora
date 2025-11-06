@@ -9,6 +9,35 @@ import Foundation
 internal import Combine
 import AppKit
 
+enum PomodoroStorage {
+    private static var storageURL: URL {
+        let container = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let folder = container.appendingPathComponent("Focora", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder.appendingPathComponent("pomodoro.json")
+    }
+
+    static func load() -> [PomodoroModel] {
+        guard let data = try? Data(contentsOf: storageURL),
+              let decoded = try? JSONDecoder().decode([PomodoroModel].self, from: data) else {
+            return []
+        }
+        return decoded
+    }
+
+    static func save(_ sessions: [PomodoroModel]) {
+        if let data = try? JSONEncoder().encode(sessions) {
+            try? data.write(to: storageURL)
+        }
+    }
+
+    static func append(_ session: PomodoroModel) {
+        var sessions = load()
+        sessions.append(session)
+        save(sessions)
+    }
+}
+
 final class PomodoroViewModel: ObservableObject {
     @Published var isVisible = false
     @Published var isRunning = false
@@ -18,12 +47,17 @@ final class PomodoroViewModel: ObservableObject {
 
     private var timer: Timer?
     private var cancellables = Set<AnyCancellable>()
+    private var sessions: [PomodoroModel] = []
+
+    init() {
+        loadSessions()
+        updateTotalFocusTime()
+    }
 
     func start(for task: TaskModel? = nil, duration: Int = 1500) {
         activeTask = task
         remainingTime = duration
         isRunning = true
-        totalFocusTime += duration
         timer?.invalidate()
 
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -32,6 +66,7 @@ final class PomodoroViewModel: ObservableObject {
                 self.remainingTime -= 1
             } else {
                 self.stop()
+                self.completeSession()
                 self.notify()
             }
         }
@@ -45,6 +80,29 @@ final class PomodoroViewModel: ObservableObject {
         enableDoNotDisturb(false)
     }
 
+    private func completeSession() {
+        let session = PomodoroModel(
+            taskId: activeTask?.id,
+            duration: 1500 - remainingTime,
+            startDate: Date().addingTimeInterval(TimeInterval(-remainingTime)),
+            endDate: Date()
+        )
+        sessions.append(session)
+        PomodoroStorage.append(session)
+        updateTotalFocusTime()
+    }
+
+    private func loadSessions() {
+        sessions = PomodoroStorage.load()
+    }
+
+    private func updateTotalFocusTime() {
+        let today = Calendar.current.startOfDay(for: Date())
+        totalFocusTime = sessions
+            .filter { $0.startDate >= today }
+            .reduce(0) { $0 + $1.duration }
+    }
+
     private func notify() {
         let notification = NSUserNotification()
         notification.title = "Pomodoro Complete"
@@ -56,10 +114,11 @@ final class PomodoroViewModel: ObservableObject {
         let script = """
         tell application "System Events"
             tell appearance preferences
-                set dark mode to true
+                set dark mode to \(enabled ? "true" : "false")
             end tell
         end tell
         """
-        _ = enabled ? script : nil
+        _ = NSAppleScript(source: script)?.executeAndReturnError(nil)
     }
 }
+
