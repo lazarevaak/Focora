@@ -7,63 +7,158 @@
 
 internal import SwiftUI
 
-struct PomodoroView: View {
+internal struct PomodoroView: View {
     @ObservedObject var viewModel: PomodoroViewModel
+
+    private let gradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color(red: 0.67, green: 0.78, blue: 0.87),
+            Color(red: 0.80, green: 0.75, blue: 0.90)
+        ]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [.purple.opacity(0.7), .blue.opacity(0.7)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
+            gradient
+                .ignoresSafeArea()
 
-            VStack(spacing: 24) {
-                Text("Pomodoro Timer")
-                    .font(.largeTitle)
-                    .bold()
-                    .foregroundColor(.white)
+            VStack(spacing: 28) {
+                // MARK: - Header
+                Text("Pomodoro")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.top, 16)
+                    .shadow(color: .white.opacity(0.4), radius: 4, y: 2)
 
-                if let task = viewModel.activeTask {
-                    Text("Focus: \(task.title)")
-                        .font(.headline)
-                        .foregroundColor(.white.opacity(0.8))
-                }
+                // MARK: - Timer circle
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.07))
+                        .overlay(
+                            Circle()
+                                .strokeBorder(
+                                    LinearGradient(
+                                        colors: [
+                                            Color.white.opacity(0.8),
+                                            Color.white.opacity(0.3)
+                                        ],
+                                        startPoint: .topLeading,
+                                        endPoint: .bottomTrailing
+                                    ),
+                                    lineWidth: 4
+                                )
+                        )
+                        .shadow(color: .black.opacity(0.15), radius: 10, y: 4)
 
-                Text(formatTime(viewModel.remainingTime))
-                    .font(.system(size: 80, weight: .bold, design: .monospaced))
-                    .foregroundColor(.white)
-                    .padding(.vertical, 20)
+                    Circle()
+                        .trim(from: 0, to: CGFloat(1 - Double(viewModel.remainingTime) / 1500))
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.95),
+                                    Color(red: 0.82, green: 0.78, blue: 0.96)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            style: StrokeStyle(lineWidth: 6, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .animation(.easeInOut(duration: 0.25), value: viewModel.remainingTime)
 
-                HStack(spacing: 40) {
-                    Button(viewModel.isRunning ? "Stop" : "Start") {
-                        viewModel.isRunning ? viewModel.stop() : viewModel.start()
+                    VStack(spacing: 8) {
+                        Text(formatTime(viewModel.remainingTime))
+                            .font(.system(size: 54, weight: .bold, design: .monospaced))
+                            .foregroundStyle(.white)
+                            .shadow(color: .white.opacity(0.3), radius: 4, y: 2)
+
+                        if let task = viewModel.activeTask {
+                            Text(task.title)
+                                .font(.headline)
+                                .foregroundColor(.white.opacity(0.8))
+                                .lineLimit(1)
+                                .truncationMode(.tail)
+                        } else {
+                            Text("No active task")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.5))
+                        }
                     }
-                    .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                }
+                .frame(width: 220, height: 220)
 
-                    Button("Reset") {
+                // MARK: - Buttons
+                HStack(spacing: 32) {
+                    Button {
+                        viewModel.isRunning ? viewModel.stop() : viewModel.start()
+                    } label: {
+                        Label(viewModel.isRunning ? "Pause" : "Start",
+                              systemImage: viewModel.isRunning ? "pause.fill" : "play.fill")
+                            .font(.headline)
+                            .frame(width: 120, height: 44)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.white.opacity(0.15))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.white.opacity(0.4), lineWidth: 1)
+                                    )
+                            )
+                            .foregroundColor(.white)
+                            .shadow(color: .white.opacity(0.3), radius: 4, y: 2)
+                    }
+                    .buttonStyle(.plain)
+
+                    Button {
                         viewModel.stop()
                         viewModel.remainingTime = 1500
+                    } label: {
+                        Label("Reset", systemImage: "arrow.counterclockwise")
+                            .font(.headline)
+                            .frame(width: 120, height: 44)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.white.opacity(0.08))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(Color.white.opacity(0.3), lineWidth: 1)
+                                    )
+                            )
+                            .foregroundColor(.white.opacity(0.9))
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    .buttonStyle(.plain)
                 }
 
-                Divider().background(Color.white.opacity(0.5))
+                // MARK: - Total Focus
+                VStack(spacing: 6) {
+                    Divider().background(Color.white.opacity(0.5))
+                        .padding(.horizontal, 40)
 
-                Text("Total focus: \(viewModel.totalFocusTime / 60) min today")
-                    .font(.title3)
-                    .foregroundColor(.white.opacity(0.8))
-                    .padding(.top, 10)
+                    Text("Total focus today:")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.8))
+                    Text("\(viewModel.totalFocusTime / 60) min")
+                        .font(.title3.weight(.semibold))
+                        .foregroundColor(.white)
+                }
+                .padding(.top, 12)
 
                 Spacer()
             }
-            .padding(40)
+            .padding(.horizontal, 28)
+            .frame(width: 340, height: 520)
+            .background(
+                RoundedRectangle(cornerRadius: 18)
+                    .fill(gradient.opacity(0.92))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 18)
+                            .stroke(Color.white.opacity(0.7), lineWidth: 3)
+                    )
+                    .shadow(color: .black.opacity(0.25), radius: 16, y: 4)
+            )
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func formatTime(_ seconds: Int) -> String {
