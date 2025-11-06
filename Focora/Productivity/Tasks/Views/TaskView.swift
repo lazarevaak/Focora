@@ -33,6 +33,16 @@ struct TaskView: View {
         .cornerRadius(16)
         .overlay(borderOverlay)
         .shadow(color: .black.opacity(0.4), radius: 25, y: 4)
+        .alert("Calendar Access Required", isPresented: $viewModel.showCalendarPermissionAlert) {
+            Button("Open System Settings") {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Please grant calendar access in System Settings to use calendar integration.")
+        }
     }
 }
 
@@ -44,11 +54,28 @@ private extension TaskView {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(topBarGradient)
             Spacer()
+            
             Picker("", selection: $mode) {
                 ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
             }
             .pickerStyle(.segmented)
             .frame(width: 220)
+            
+            Button(action: { viewModel.importFromCalendar()}) {
+                Image(systemName: "arrow.down.circle")
+                    .foregroundStyle(topBarGradient)
+                    .font(.system(size: 16))
+            }
+            .buttonStyle(.plain)
+            .help("Добавить задачи из календаря")
+            
+            Button(action: { viewModel.syncAllWithCalendar()}) {
+                Image(systemName: "arrow.up.circle")
+                    .foregroundStyle(topBarGradient)
+                    .font(.system(size: 16))
+            }
+            .buttonStyle(.plain)
+            .help("Добавить все задачи в календарь")
         }
         .padding(.horizontal, 18)
         .padding(.top, 12)
@@ -265,12 +292,20 @@ private extension TaskView {
             }
 
             Spacer()
+            
+            if !task.isSyncedWithCalendar && task.dueDate != nil {
+                Button {
+                    viewModel.exportToCalendar(task)
+                } label: {
+                    Image(systemName: "calendar.badge.plus")
+                        .foregroundColor(.blue.opacity(0.8))
+                }
+                .buttonStyle(.plain)
+                .help("Добавить в календарь")
+            }
 
             Button(role: .destructive) {
-                if let index = viewModel.tasks.firstIndex(of: task) {
-                    viewModel.tasks.remove(at: index)
-                    viewModel.saveTasks()
-                }
+                viewModel.deleteTask(task)
             } label: {
                 Image(systemName: "trash")
                     .foregroundColor(.white.opacity(0.6))

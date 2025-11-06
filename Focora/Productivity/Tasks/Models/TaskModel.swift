@@ -14,6 +14,11 @@ struct TaskModel: Identifiable, Codable, Equatable {
     var dueDate: Date?
     var tags: [String]
     var isCompleted: Bool
+    var createdAt: Date
+    
+    // Calendar Integration
+    var calendarEventIdentifier: String?
+    var isSyncedWithCalendar: Bool
 
     enum Priority: String, CaseIterable, Codable {
         case low = "Low"
@@ -27,7 +32,11 @@ struct TaskModel: Identifiable, Codable, Equatable {
         priority: Priority = .medium,
         dueDate: Date? = nil,
         tags: [String] = [],
-        isCompleted: Bool = false
+        isCompleted: Bool = false,
+        createdAt: Date = Date(),
+        calendarEventIdentifier: String? = nil,
+        isSyncedWithCalendar: Bool = false
+        
     ) {
         self.id = id
         self.title = title
@@ -35,5 +44,8 @@ struct TaskModel: Identifiable, Codable, Equatable {
         self.dueDate = dueDate
         self.tags = tags
         self.isCompleted = isCompleted
+        self.createdAt = createdAt
+        self.calendarEventIdentifier = calendarEventIdentifier
+        self.isSyncedWithCalendar = isSyncedWithCalendar
     }
 }

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import EventKit
 internal import Combine
 internal import SwiftUI
 
@@ -21,6 +22,12 @@ final class TaskViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var allTags: [TagModel] = []        // ✅ список тегов
     @Published var selectedTag: TagModel? = nil    // ✅ фильтрация по тегу
+    
+    // Calendar integration
+    @Published var showCalendarPermissionAlert = false
+    @Published var calendarEvents: [EKEvent] = []
+    
+    private let calendarManager = CalendarManager.shared
 
     // MARK: - Storage
     private let storageFolder: URL = {
@@ -72,8 +79,12 @@ final class TaskViewModel: ObservableObject {
         newDueDate = .now
     }
 
-    func delete(at offsets: IndexSet) {
-        tasks.remove(atOffsets: offsets)
+    func deleteTask(_ task: TaskModel) {
+        if task.isSyncedWithCalendar, let eventId = task.calendarEventIdentifier {
+            deleteFromCalendar(eventIdentifier: eventId)
+        }
+        
+        tasks.removeAll { $0.id == task.id }
         saveTasks()
     }
 
@@ -121,6 +132,130 @@ final class TaskViewModel: ObservableObject {
             allTags = try JSONDecoder().decode([TagModel].self, from: data)
         } catch {
             print("⚠️ [TaskViewModel] Failed to load tags: \(error)")
+        }
+    }
+    
+    // MARK: - Calendar Integration
+    
+    func requestCalendarAccess() {
+        Task {
+            if #available(macOS 14.0, *) {
+                let status = EKEventStore.authorizationStatus(for: .event)
+                
+                if status == .fullAccess {
+                    return
+                }
+                
+                if status == .denied || status == .restricted {
+                    showCalendarPermissionAlert = true
+                    return
+                }
+                
+                let granted = await calendarManager.requestCalendarAccess()
+                if !granted {
+                    showCalendarPermissionAlert = true
+                }
+            } else {
+                let status = EKEventStore.authorizationStatus(for: .event)
+                
+                if status == .authorized {
+                    return
+                }
+                
+                if status == .denied || status == .restricted {
+                    showCalendarPermissionAlert = true
+                    return
+                }
+                
+                let granted = await calendarManager.requestCalendarAccess()
+                if !granted {
+                    showCalendarPermissionAlert = true
+                }
+            }
+        }
+    }
+    
+    func importFromCalendar() {
+        guard calendarManager.hasCalendarAccess else {
+            requestCalendarAccess()
+            return
+        }
+        
+        let events = calendarManager.fetchUpcomingEvents(daysAhead: 30)
+        calendarEvents = events
+        
+        for event in events {
+            let alreadyExists = tasks.contains { $0.calendarEventIdentifier == event.eventIdentifier }
+            guard !alreadyExists else { continue }
+            
+            let task = TaskModel(
+                title: event.title ?? "Untitled Event",
+                priority: .medium,
+                dueDate: event.startDate,
+                tags: ["calendar"],
+                calendarEventIdentifier: event.eventIdentifier,
+                isSyncedWithCalendar: true
+            )
+            
+            tasks.append(task)
+        }
+        
+        saveTasks()
+    }
+    
+    func exportToCalendar(_ task: TaskModel) {
+        guard calendarManager.hasCalendarAccess else {
+            requestCalendarAccess()
+            return
+        }
+        
+        guard !task.isSyncedWithCalendar else {
+            print("Task already synced with calendar")
+            return
+        }
+        
+        let startDate = task.dueDate ?? Date()
+        let duration: TimeInterval = 3600
+        
+        let notes = """
+        Priority: \(task.priority.rawValue)
+        Tags: \(task.tags.joined(separator: ", "))
+        Created in Focora
+        """
+        
+        let result = calendarManager.createEvent(
+            title: task.title,
+            startDate: startDate,
+            duration: duration,
+            notes: notes
+        )
+        
+        switch result {
+        case .success(let event):
+            if let idx = tasks.firstIndex(where: { $0.id == task.id }) {
+                tasks[idx].calendarEventIdentifier = event.eventIdentifier
+                tasks[idx].isSyncedWithCalendar = true
+                saveTasks()
+            }
+            print("Task exported to calendar successfully")
+            
+        case .failure(let error):
+            print("Failed to export task: \(error)")
+        }
+    }
+    
+    func deleteFromCalendar(eventIdentifier: String) {
+        guard calendarManager.hasCalendarAccess else { return }
+        
+        let events = calendarManager.fetchUpcomingEvents(daysAhead: 365)
+        if let event = events.first(where: { $0.eventIdentifier == eventIdentifier }) {
+            _ = calendarManager.deleteEvent(event)
+        }
+    }
+    
+    func syncAllWithCalendar() {
+        for task in tasks where !task.isSyncedWithCalendar && task.dueDate != nil {
+            exportToCalendar(task)
         }
     }
 }
