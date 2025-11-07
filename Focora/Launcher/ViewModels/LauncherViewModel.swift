@@ -110,7 +110,7 @@ final class LauncherViewModel: ObservableObject {
             CommandItem(icon: "XcodeIcon", title: "Open Xcode", keywords: ["xcode", "ide", "apple", "development"]) {
                 if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.dt.Xcode") {
                     NSWorkspace.shared.openApplication(at: url, configuration: .init())
-                }
+                 }
             },
             CommandItem(icon: "PomodoroIcon", title: "Pomodoro", keywords: ["pomodoro", "timer", "focus"]) {
                 NotificationCenter.default.post(name: NSNotification.Name("ShowPomodoro"), object: nil)
@@ -140,7 +140,8 @@ final class LauncherViewModel: ObservableObject {
                 guard appURL.pathExtension == "app" else { continue }
                 let name = appURL.deletingPathExtension().lastPathComponent
                 let keywords = [name.lowercased()]
-                let item = CommandItem(icon: "", title: name, keywords: keywords) {
+                let icon = NSWorkspace.shared.icon(forFile: appURL.path)
+                let item = CommandItem(appIcon: icon, title: name, keywords: keywords) {
                     NSWorkspace.shared.openApplication(at: appURL, configuration: .init())
                 }
                 found.append(item)

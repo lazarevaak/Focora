@@ -104,11 +104,27 @@ private extension LauncherView {
             isVisible = false
         } label: {
             HStack(spacing: 12) {
-                Image(item.icon)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 28, height: 28)
-                    .cornerRadius(6)
+                if let appIcon = item.appIcon {
+                    // Иконка приложения из NSWorkspace
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 28, height: 28)
+                } else if !item.icon.isEmpty {
+                    // Иконка из Asset Catalog
+                    Image(item.icon)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 28, height: 28)
+                        .cornerRadius(6)
+                } else {
+                    // Placeholder для приложений без иконки
+                    Image(systemName: "app.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 28, height: 28)
+                        .foregroundColor(.white.opacity(0.7))
+                }
                 Text(item.title)
                     .foregroundColor(.white)
                     .font(.system(size: 17, weight: .semibold))
