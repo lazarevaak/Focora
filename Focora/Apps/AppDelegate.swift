@@ -181,7 +181,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     // MARK: - Toggle Windows
     private func toggleLauncher() {
         guard let window = launcherWindow else { return }
-        window.isVisible ? window.orderOut(nil) : showWindow(window)
+        window.isVisible ? window.orderOut(nil) : showWindow(window, position: .center)
     }
 
     private func toggleClipboard() {
@@ -192,7 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.orderOut(nil)
             clipboardVM.isVisible = false
         } else {
-            showWindow(window)
+            showWindow(window, position: .topRight)
             clipboardVM.isVisible = true
         }
     }
@@ -205,7 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.orderOut(nil)
             taskManagerVM.isVisible = false
         } else {
-            showWindow(window)
+            showWindow(window, position: .bottomLeft)
             taskManagerVM.isVisible = true
         }
     }
@@ -218,28 +218,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             window.orderOut(nil)
             pomodoroVM.isVisible = false
         } else {
-            showWindow(window)
+            showWindow(window, position: .bottomRight)
             pomodoroVM.isVisible = true
         }
     }
 
     // MARK: - Common Window Helpers
-    private func showWindow(_ window: NSWindow) {
+    private enum WindowPosition {
+        case center
+        case topRight
+        case bottomRight
+        case bottomLeft
+
+        func origin(for windowSize: CGSize, in screenFrame: CGRect, padding: CGFloat = 24) -> NSPoint {
+            switch self {
+            case .center:
+                return NSPoint(
+                    x: screenFrame.midX - windowSize.width / 2,
+                    y: screenFrame.midY - windowSize.height / 2
+                )
+            case .topRight:
+                return NSPoint(
+                    x: screenFrame.maxX - windowSize.width - padding,
+                    y: screenFrame.maxY - windowSize.height - padding
+                )
+            case .bottomRight:
+                return NSPoint(
+                    x: screenFrame.maxX - windowSize.width - padding,
+                    y: screenFrame.minY + padding
+                )
+            case .bottomLeft:
+                return NSPoint(
+                    x: screenFrame.minX + padding,
+                    y: screenFrame.minY + padding
+                )
+            }
+        }
+    }
+    
+    private func showWindow(_ window: NSWindow, position: WindowPosition) {
         window.contentViewController?.view.layoutSubtreeIfNeeded()
 
         guard let screen = window.screen ?? NSScreen.main else { return }
 
         let contentSize = window.contentViewController?.view.fittingSize ?? window.frame.size
-        let targetFrame = window.frameRect(
-            forContentRect: NSRect(origin: .zero, size: contentSize)
-        )
+        let targetFrame = window.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize))
+        let origin = position.origin(for: targetFrame.size, in: screen.visibleFrame)
 
-        let centeredOrigin = NSPoint(
-            x: screen.visibleFrame.midX - targetFrame.width / 2,
-            y: screen.visibleFrame.midY - targetFrame.height / 2
-        )
-
-        window.setFrame(NSRect(origin: centeredOrigin, size: targetFrame.size), display: false)
+        window.setFrame(NSRect(origin: origin, size: targetFrame.size), display: false)
 
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
@@ -271,17 +297,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowDidResignKey(_ notification: Notification) {
         guard let window = notification.object as? NSWindow else { return }
 
-        if window === launcherWindow {
-            window.orderOut(nil)
-        } else if window === clipboardWindow {
-            clipboardWindow?.orderOut(nil)
-            clipboardVM.isVisible = false
-        } else if window === taskManagerWindow {
-            taskManagerWindow?.orderOut(nil)
-            taskManagerVM.isVisible = false
-        } else if window === pomodoroWindow {
-            pomodoroWindow?.orderOut(nil)
-            pomodoroVM.isVisible = false
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+
+            if let newKey = NSApp.keyWindow,
+               [self.launcherWindow,
+                self.clipboardWindow,
+                self.taskManagerWindow,
+                self.pomodoroWindow].contains(where: { $0 === newKey }) {
+                // Фокус просто перешёл на другое наше окно — ничего не закрываем.
+                return
+            }
+
+            if window === self.launcherWindow {
+                window.orderOut(nil)
+            } else if window === self.clipboardWindow {
+                self.clipboardWindow?.orderOut(nil)
+                self.clipboardVM.isVisible = false
+            } else if window === self.taskManagerWindow {
+                self.taskManagerWindow?.orderOut(nil)
+                self.taskManagerVM.isVisible = false
+            } else if window === self.pomodoroWindow {
+                self.pomodoroWindow?.orderOut(nil)
+                self.pomodoroVM.isVisible = false
+            }
         }
     }
 }
