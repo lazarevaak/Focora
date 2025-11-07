@@ -122,14 +122,7 @@ private extension LauncherView {
 
     // MARK: - Background
     var background: some View {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color(red: 0.67, green: 0.78, blue: 0.87),
-                Color(red: 0.80, green: 0.75, blue: 0.90)
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+        FocoraGradients.lightPrimary
         .opacity(0.95)
         .overlay(
             RoundedRectangle(cornerRadius: 18)

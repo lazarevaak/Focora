@@ -16,7 +16,7 @@ struct DarkTextFieldStyle: TextFieldStyle {
             .textFieldStyle(.plain)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(0.08))
+                    .fill(Color.white.opacity(0.15))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)

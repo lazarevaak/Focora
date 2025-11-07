@@ -16,7 +16,6 @@ struct TaskModel: Identifiable, Codable, Equatable {
     var isCompleted: Bool
     var createdAt: Date
     
-    // Calendar Integration
     var calendarEventIdentifier: String?
     var isSyncedWithCalendar: Bool
 

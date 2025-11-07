@@ -10,18 +10,6 @@ internal import SwiftUI
 struct DateSlider: View {
     @Binding var selection: Date
 
-    // Фирменный градиент
-    var gradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(red: 0.72, green: 0.82, blue: 0.93),
-                Color(red: 0.80, green: 0.75, blue: 0.90)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Due Date")
@@ -30,11 +18,11 @@ struct DateSlider: View {
 
             ZStack {
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(gradient)
+                    .fill(FocoraGradients.primary)
                     .opacity(0.15)
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(gradient, lineWidth: 1.5)
+                            .strokeBorder(FocoraGradients.primary, lineWidth: 1.5)
                     )
 
                 HStack(spacing: 8) {
