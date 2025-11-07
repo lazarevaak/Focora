@@ -111,6 +111,15 @@ final class LauncherViewModel: ObservableObject {
                 if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.dt.Xcode") {
                     NSWorkspace.shared.openApplication(at: url, configuration: .init())
                 }
+            },
+            CommandItem(icon: "PomodoroIcon", title: "Pomodoro", keywords: ["pomodoro", "timer", "focus"]) {
+                NotificationCenter.default.post(name: NSNotification.Name("ShowPomodoro"), object: nil)
+            },
+            CommandItem(icon: "TaskManagerIcon", title: "Task Manager", keywords: ["tasks", "todo", "manager"]) {
+                NotificationCenter.default.post(name: NSNotification.Name("ShowTaskManager"), object: nil)
+            },
+            CommandItem(icon: "ClipboardIcon", title: "Clipboard", keywords: ["clipboard", "copy", "paste"]) {
+                NotificationCenter.default.post(name: NSNotification.Name("ShowClipboard"), object: nil)
             }
         ]
     }
