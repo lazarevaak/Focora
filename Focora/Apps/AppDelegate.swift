@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     
     // MARK: - App entry
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
         setupLauncherWindow()
         setupHotKeys()
         setupNotifications()
@@ -42,6 +43,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
                 print("⚠️ Notifications not granted by user.")
             }
         }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleShowPomodoro),
+            name: NSNotification.Name("ShowPomodoro"),
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleShowTaskManager),
+            name: NSNotification.Name("ShowTaskManager"),
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleShowClipboard),
+            name: NSNotification.Name("ShowClipboard"),
+            object: nil
+        )
+    }
+    
+    @objc private func handleShowPomodoro() {
+        showPomodoro()
+    }
+    
+    @objc private func handleShowTaskManager() {
+        showTaskManager()
+    }
+    
+    @objc private func handleShowClipboard() {
+        showClipboard()
     }
 
     // MARK: - Setup Launcher Window
@@ -255,6 +286,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             showWindow(window, position: .bottomRight)
             pomodoroVM.isVisible = true
         }
+    }
+    
+    // MARK: - Show Window Methods
+    private func showPomodoro() {
+        setupPomodoroWindowIfNeeded()
+        guard let window = pomodoroWindow else { return }
+        launcherWindow?.orderOut(nil)
+        showWindow(window, position: .bottomRight)
+        pomodoroVM.isVisible = true
+    }
+    
+    private func showTaskManager() {
+        setupTaskManagerWindowIfNeeded()
+        guard let window = taskManagerWindow else { return }
+        launcherWindow?.orderOut(nil)
+        showWindow(window, position: .center)
+        taskManagerVM.isVisible = true
+    }
+    
+    private func showClipboard() {
+        setupClipboardWindowIfNeeded()
+        guard let window = clipboardWindow else { return }
+        launcherWindow?.orderOut(nil)
+        showWindow(window, position: .center)
+        clipboardVM.isVisible = true
     }
 
     // MARK: - Common Window Helpers
