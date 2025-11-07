@@ -132,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         
         window.level = .statusBar
         window.center()
-        window.delegate = self
+        // window.delegate = self
 
         clipboardWindow = window
     }
