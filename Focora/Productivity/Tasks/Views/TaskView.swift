@@ -9,9 +9,16 @@ internal import SwiftUI
 
 struct TaskView: View {
     @ObservedObject var viewModel: TaskViewModel
+    @EnvironmentObject var pomodoroVM: PomodoroViewModel
+
     @State private var mode: Mode = .add
     @State private var sortOrder: SortOrder = .newestFirst
-    @State private var selectedTags: Set<TagModel> = [] // ✅ выбранные теги при создании
+    @State private var selectedTags: Set<TagModel> = []
+
+    // для Pomodoro
+    @State private var selectedTask: TaskModel?
+    @State private var selectedDuration = 1500
+    @State private var showDurationPicker = false
 
     enum Mode: String, CaseIterable {
         case add = "Add Task"
@@ -33,43 +40,54 @@ struct TaskView: View {
         .cornerRadius(16)
         .overlay(borderOverlay)
         .shadow(color: .black.opacity(0.4), radius: 25, y: 4)
-        .alert("Calendar Access Required", isPresented: $viewModel.showCalendarPermissionAlert) {
-            Button("Open System Settings") {
-                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
-                    NSWorkspace.shared.open(url)
+        .sheet(isPresented: $showDurationPicker, onDismiss: {
+            viewModel.isPresentingSheet = false
+        }) {
+            durationPicker
+                .onAppear {
+                    viewModel.isPresentingSheet = true
                 }
-            }
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("Please grant calendar access in System Settings to use calendar integration.")
+                .presentationDetents([.fraction(0.3)])
+                .alert("Calendar Access Required", isPresented: $viewModel.showCalendarPermissionAlert) {
+                    Button("Open System Settings") {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Please grant calendar access in System Settings to use calendar integration.")
+                }
         }
+
     }
 }
 
 // MARK: - Subviews
 private extension TaskView {
+
     var topBar: some View {
         HStack {
             Text("Task Manager")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(topBarGradient)
             Spacer()
-            
+
             Picker("", selection: $mode) {
                 ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
             }
             .pickerStyle(.segmented)
             .frame(width: 220)
-            
-            Button(action: { viewModel.importFromCalendar()}) {
+
+            Button(action: { viewModel.importFromCalendar() }) {
                 Image(systemName: "arrow.down.circle")
                     .foregroundStyle(topBarGradient)
                     .font(.system(size: 16))
             }
             .buttonStyle(.plain)
             .help("Добавить задачи из календаря")
-            
-            Button(action: { viewModel.syncAllWithCalendar()}) {
+
+            Button(action: { viewModel.syncAllWithCalendar() }) {
                 Image(systemName: "arrow.up.circle")
                     .foregroundStyle(topBarGradient)
                     .font(.system(size: 16))
@@ -88,9 +106,11 @@ private extension TaskView {
             if mode == .add { inputSection } else { searchSection }
             Divider().background(Color.white.opacity(0.2))
             taskList
+                .frame(maxHeight: .infinity)
         }
         .padding(16)
     }
+
 
     // MARK: Add Section
     var inputSection: some View {
@@ -109,7 +129,6 @@ private extension TaskView {
             TextField("Tags (comma separated)", text: $viewModel.newTags)
                 .textFieldStyle(DarkTextFieldStyle())
 
-            // ✅ Выбор из прошлых тегов
             if !viewModel.allTags.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Select existing tags:")
@@ -128,7 +147,6 @@ private extension TaskView {
             }
 
             Button(action: {
-                // Добавляем выбранные теги к введённым вручную
                 let manualTags = viewModel.newTags
                     .split(separator: ",")
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -147,8 +165,10 @@ private extension TaskView {
                     .padding(.vertical, 6)
                     .background(
                         LinearGradient(
-                            colors: [Color(red: 0.72, green: 0.82, blue: 0.93),
-                                     Color(red: 0.80, green: 0.75, blue: 0.90)],
+                            colors: [
+                                Color(red: 0.72, green: 0.82, blue: 0.93),
+                                Color(red: 0.80, green: 0.75, blue: 0.90)
+                            ],
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
@@ -163,25 +183,19 @@ private extension TaskView {
     // MARK: Capsule Tag
     func tagCapsule(_ tag: TagModel) -> some View {
         let isSelected = selectedTags.contains(tag)
-
         return Text(tag.name)
             .font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected
-                          ? .red
-                          : Color.white.opacity(0.08))
+                    .fill(isSelected ? .red : Color.white.opacity(0.08))
             )
             .foregroundColor(isSelected ? .black : .white.opacity(0.9))
             .onTapGesture {
                 withAnimation(.easeInOut(duration: 0.2)) {
-                    if isSelected {
-                        selectedTags.remove(tag)
-                    } else {
-                        selectedTags.insert(tag)
-                    }
+                    if isSelected { selectedTags.remove(tag) }
+                    else { selectedTags.insert(tag) }
                 }
             }
     }
@@ -217,11 +231,15 @@ private extension TaskView {
 
     // MARK: Task List
     var taskList: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(filteredAndSortedTasks) { task in
-                    taskItem(task)
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 8) {
+                    ForEach(filteredAndSortedTasks) { task in
+                        taskItem(task)
+                            .id(task.id)
+                    }
                 }
+                .padding(.bottom, 12)
             }
         }
     }
@@ -230,7 +248,6 @@ private extension TaskView {
     var filteredAndSortedTasks: [TaskModel] {
         var result = viewModel.tasks
 
-        // Поиск
         if mode == .search && !viewModel.searchText.isEmpty {
             result = result.filter {
                 $0.title.localizedCaseInsensitiveContains(viewModel.searchText) ||
@@ -238,12 +255,10 @@ private extension TaskView {
             }
         }
 
-        // Фильтр по тегу
         if let tag = viewModel.selectedTag {
             result = result.filter { $0.tags.contains(tag.name) }
         }
 
-        // Сортировка
         result.sort {
             guard let d1 = $0.dueDate, let d2 = $1.dueDate else { return false }
             switch sortOrder {
@@ -256,12 +271,14 @@ private extension TaskView {
 
     // MARK: Task Item
     func taskItem(_ task: TaskModel) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        let isSelected = selectedTask?.id == task.id
+
+        return HStack(alignment: .top, spacing: 10) {
             Button(action: { viewModel.toggleCompletion(for: task) }) {
                 Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(task.isCompleted
-                        ? Color(red: 0.72, green: 0.82, blue: 0.93)
-                        : .white.opacity(0.6))
+                                     ? Color(red: 0.72, green: 0.82, blue: 0.93)
+                                     : .white.opacity(0.6))
                     .font(.system(size: 18))
             }
             .buttonStyle(.plain)
@@ -289,10 +306,14 @@ private extension TaskView {
                             .foregroundColor(.purple.opacity(0.8))
                     }
                 }
+
+                Text("Focus: \(pomodoroVM.totalFocusTime(for: task) / 60) min")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.7))
             }
 
             Spacer()
-            
+
             if !task.isSyncedWithCalendar && task.dueDate != nil {
                 Button {
                     viewModel.exportToCalendar(task)
@@ -313,8 +334,89 @@ private extension TaskView {
             .buttonStyle(.plain)
         }
         .padding(10)
-        .background(Color.white.opacity(0.05))
-        .cornerRadius(8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(
+                    isSelected
+                    ? Color(red: 0.70, green: 0.80, blue: 0.92).opacity(0.15)
+                    : Color.white.opacity(0.05)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(
+                            isSelected ? AnyShapeStyle(topBarGradient) : AnyShapeStyle(Color.clear),
+                            lineWidth: 1.5
+                        )
+                )
+
+        )
+        .onTapGesture {
+            if isSelected {
+                showDurationPicker = true
+            } else {
+                selectedTask = task
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: selectedTask?.id)
+    }
+
+    var durationPicker: some View {
+        VStack(spacing: 20) {
+            Text("Select Focus Duration")
+                .font(.headline)
+
+            VStack(spacing: 8) {
+                Slider(
+                    value: Binding(
+                        get: { Double(selectedDuration) },
+                        set: { selectedDuration = Int($0) }
+                    ),
+                    in: 60...3600,
+                    step: 60
+                )
+                .tint(.purple)
+
+                Text("Duration: \(formatDuration(selectedDuration))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            HStack(spacing: 16) {
+                Button("Cancel", role: .cancel) {
+                    showDurationPicker = false
+                }
+                .buttonStyle(.bordered)
+                .keyboardShortcut(.cancelAction)
+
+                Button("Start Focus") {
+                    guard let task = selectedTask else { return }
+                    pomodoroVM.start(for: task, duration: selectedDuration)
+                    showDurationPicker = false
+                }
+                .buttonStyle(.borderedProminent)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .onAppear {
+            selectedDuration = 1500
+        }
+        .padding()
+    }
+
+
+
+    private func formatDuration(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        let secs = seconds % 60
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        } else if minutes > 0 {
+            return "\(minutes)m \(secs)s"
+        } else {
+            return "\(secs)s"
+        }
     }
 }
 
@@ -322,10 +424,8 @@ private extension TaskView {
 private extension TaskView {
     var topBarGradient: LinearGradient {
         LinearGradient(
-            colors: [
-                Color(red: 0.72, green: 0.82, blue: 0.93),
-                Color(red: 0.80, green: 0.75, blue: 0.90)
-            ],
+            colors: [Color(red: 0.72, green: 0.82, blue: 0.93),
+                     Color(red: 0.80, green: 0.75, blue: 0.90)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -333,10 +433,8 @@ private extension TaskView {
 
     var topBarBackground: LinearGradient {
         LinearGradient(
-            colors: [
-                Color(red: 0.12, green: 0.13, blue: 0.16),
-                Color(red: 0.09, green: 0.10, blue: 0.12)
-            ],
+            colors: [Color(red: 0.12, green: 0.13, blue: 0.16),
+                     Color(red: 0.09, green: 0.10, blue: 0.12)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -344,10 +442,8 @@ private extension TaskView {
 
     var background: LinearGradient {
         LinearGradient(
-            gradient: Gradient(colors: [
-                Color(red: 0.07, green: 0.08, blue: 0.10),
-                Color(red: 0.12, green: 0.13, blue: 0.15)
-            ]),
+            colors: [Color(red: 0.07, green: 0.08, blue: 0.10),
+                     Color(red: 0.12, green: 0.13, blue: 0.15)],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
@@ -355,28 +451,16 @@ private extension TaskView {
 
     var borderOverlay: some View {
         RoundedRectangle(cornerRadius: 16)
-            .strokeBorder(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.72, green: 0.82, blue: 0.93),
-                        Color(red: 0.80, green: 0.75, blue: 0.90)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                lineWidth: 4
-            )
+            .strokeBorder(topBarGradient, lineWidth: 4)
             .opacity(0.9)
     }
 }
 
-
-
+// MARK: - TagPicker
 struct TagPicker: View {
     @Binding var selectedTag: TagModel?
     let tags: [TagModel]
 
-    // Фирменный градиент
     private var gradient: LinearGradient {
         LinearGradient(
             colors: [
@@ -395,7 +479,6 @@ struct TagPicker: View {
                 .foregroundColor(.white.opacity(0.65))
 
             ZStack {
-                // Фон с лёгким свечением
                 RoundedRectangle(cornerRadius: 8)
                     .fill(Color.white.opacity(0.08))
                     .overlay(

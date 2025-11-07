@@ -10,7 +10,7 @@ internal import SwiftUI
 internal struct PomodoroView: View {
     @ObservedObject var viewModel: PomodoroViewModel
 
-    private let gradient = LinearGradient(
+    private let gradient = LinearGradient( 
         gradient: Gradient(colors: [
             Color(red: 0.67, green: 0.78, blue: 0.87),
             Color(red: 0.80, green: 0.75, blue: 0.90)
