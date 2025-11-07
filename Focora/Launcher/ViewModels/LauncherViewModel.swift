@@ -20,6 +20,48 @@ final class LauncherViewModel: ObservableObject {
         Task { await scanApplications() }
     }
     
+    // MARK: - Search commands
+    func searchCommands(for query: String) -> [CommandItem] {
+        guard !query.isEmpty else { return [] }
+        let encodedQuery = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        
+        return [
+            CommandItem(icon: "GoogleChromeIcon", title: "Search in Google", keywords: []) {
+                if let searchURL = URL(string: "https://www.google.com/search?q=\(encodedQuery)") {
+                    if let chromeURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") {
+                        NSWorkspace.shared.open([searchURL], withApplicationAt: chromeURL, configuration: NSWorkspace.OpenConfiguration())
+                    } else {
+                        NSWorkspace.shared.open(searchURL)
+                    }
+                }
+            },
+            CommandItem(icon: "YandexIcon", title: "Search in Yandex", keywords: []) {
+                if let searchURL = URL(string: "https://yandex.ru/search/?text=\(encodedQuery)") {
+                    if let yandexURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "ru.yandex.desktop.yandex-browser") {
+                        NSWorkspace.shared.open([searchURL], withApplicationAt: yandexURL, configuration: NSWorkspace.OpenConfiguration())
+                    } else {
+                        NSWorkspace.shared.open(searchURL)
+                    }
+                }
+            },
+            CommandItem(icon: "SafariIcon", title: "Search in Safari", keywords: []) {
+                if let searchURL = URL(string: "https://www.google.com/search?q=\(encodedQuery)"),
+                   let safariURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Safari") {
+                    NSWorkspace.shared.open([searchURL], withApplicationAt: safariURL, configuration: NSWorkspace.OpenConfiguration())
+                }
+            },
+            CommandItem(icon: "ChatGPTIcon", title: "Search in ChatGPT", keywords: []) {
+                if let searchURL = URL(string: "https://chat.openai.com/?q=\(encodedQuery)") {
+                    if let chatGPTURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.openai.chat") {
+                        NSWorkspace.shared.open([searchURL], withApplicationAt: chatGPTURL, configuration: NSWorkspace.OpenConfiguration())
+                    } else {
+                        NSWorkspace.shared.open(searchURL)
+                    }
+                }
+            }
+        ]
+    }
+    
     // MARK: - Filtering
     var filteredApps: [CommandItem] {
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -54,6 +96,15 @@ final class LauncherViewModel: ObservableObject {
             CommandItem(icon: "GoogleChromeIcon", title: "Open Google Chrome", keywords: ["chrome", "browser", "google"]) {
                 if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.google.Chrome") {
                     NSWorkspace.shared.openApplication(at: url, configuration: .init())
+                }
+            },
+            CommandItem(icon: "ChatGPTIcon", title: "Open ChatGPT", keywords: ["chatgpt", "gpt", "ai", "openai"]) {
+                if let url = URL(string: "https://chat.openai.com") {
+                    if let chatGPTURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.openai.chat") {
+                        NSWorkspace.shared.openApplication(at: chatGPTURL, configuration: .init())
+                    } else {
+                        NSWorkspace.shared.open(url)
+                    }
                 }
             },
             CommandItem(icon: "XcodeIcon", title: "Open Xcode", keywords: ["xcode", "ide", "apple", "development"]) {

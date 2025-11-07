@@ -20,12 +20,10 @@ struct LauncherView: View {
                     if viewModel.query.isEmpty {
                         commandList(viewModel.commands)
                     } else {
-                        if viewModel.filteredApps.isEmpty {
-                            Text("No matching apps found")
-                                .foregroundColor(.white.opacity(0.7))
-                                .padding()
-                        } else {
+                        if !viewModel.filteredApps.isEmpty {
                             commandList(viewModel.filteredApps)
+                        } else {
+                            commandList(viewModel.searchCommands(for: viewModel.query))
                         }
                     }
                 }
@@ -55,9 +53,16 @@ private extension LauncherView {
                     .font(.system(size: 22, weight: .medium))
                     .textFieldStyle(.plain)
                     .onSubmit {
-                        if let first = viewModel.filteredApps.first {
-                            first.run()
-                            isVisible = false
+                        if !viewModel.query.isEmpty {
+                            if let first = viewModel.filteredApps.first {
+                                first.run()
+                                isVisible = false
+                                viewModel.query = ""
+                            } else if let first = viewModel.searchCommands(for: viewModel.query).first {
+                                first.run()
+                                isVisible = false
+                                viewModel.query = ""
+                            }
                         }
                     }
             }
