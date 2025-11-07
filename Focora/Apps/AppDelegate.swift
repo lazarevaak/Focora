@@ -9,7 +9,7 @@ import AppKit
 internal import SwiftUI
 import Carbon.HIToolbox
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let catalog = LauncherViewModel()
     private let clipboardVM = ClipboardViewModel()
     private let taskManagerVM = TaskViewModel()
@@ -44,7 +44,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
 
         configureForCustomAppearance(window)
-
+        window.delegate = self
+        
         window.contentView = hostingView
         window.level = .statusBar
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
@@ -67,7 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let view = ClipboardView(viewModel: clipboardVM)
         let hosting = NSHostingController(rootView: view)
 
-        let window = NSWindow(
+        let window = FocusableWindow(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 360),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
@@ -78,6 +79,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentViewController = hosting
         window.level = .statusBar
         window.center()
+        window.delegate = self
 
         clipboardWindow = window
     }
@@ -100,6 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentViewController = hosting
         window.level = .statusBar
         window.center()
+        window.delegate = self
 
         taskManagerWindow = window
     }
@@ -111,7 +114,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let view = PomodoroView(viewModel: pomodoroVM)
         let hosting = NSHostingController(rootView: view)
 
-        let window = NSWindow(
+        let window = FocusableWindow(
             contentRect: NSRect(x: 0, y: 0, width: 360, height: 260),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
@@ -122,6 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         window.contentViewController = hosting
         window.level = .statusBar
         window.center()
+        window.delegate = self
 
         pomodoroWindow = window
     }
@@ -188,8 +192,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.orderOut(nil)
             clipboardVM.isVisible = false
         } else {
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
+            showWindow(window)
             clipboardVM.isVisible = true
         }
     }
@@ -202,8 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.orderOut(nil)
             taskManagerVM.isVisible = false
         } else {
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
+            showWindow(window)
             taskManagerVM.isVisible = true
         }
     }
@@ -216,21 +218,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.orderOut(nil)
             pomodoroVM.isVisible = false
         } else {
-            NSApp.activate(ignoringOtherApps: true)
-            window.makeKeyAndOrderFront(nil)
+            showWindow(window)
             pomodoroVM.isVisible = true
         }
     }
 
     // MARK: - Common Window Helpers
     private func showWindow(_ window: NSWindow) {
-        guard let screen = NSScreen.main else { return }
-        let frame = window.frame
-        let x = screen.visibleFrame.midX - frame.width / 2
-        let y = screen.visibleFrame.midY - frame.height / 2
-        window.setFrameOrigin(NSPoint(x: x, y: y))
+        window.contentViewController?.view.layoutSubtreeIfNeeded()
+
+        guard let screen = window.screen ?? NSScreen.main else { return }
+
+        let contentSize = window.contentViewController?.view.fittingSize ?? window.frame.size
+        let targetFrame = window.frameRect(
+            forContentRect: NSRect(origin: .zero, size: contentSize)
+        )
+
+        let centeredOrigin = NSPoint(
+            x: screen.visibleFrame.midX - targetFrame.width / 2,
+            y: screen.visibleFrame.midY - targetFrame.height / 2
+        )
+
+        window.setFrame(NSRect(origin: centeredOrigin, size: targetFrame.size), display: false)
+
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             self.focusFirstTextField(in: window)
         }
@@ -253,5 +266,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         HotKeyManager.shared.unregister()
+    }
+    
+    func windowDidResignKey(_ notification: Notification) {
+        guard let window = notification.object as? NSWindow else { return }
+
+        if window === launcherWindow {
+            window.orderOut(nil)
+        } else if window === clipboardWindow {
+            clipboardWindow?.orderOut(nil)
+            clipboardVM.isVisible = false
+        } else if window === taskManagerWindow {
+            taskManagerWindow?.orderOut(nil)
+            taskManagerVM.isVisible = false
+        } else if window === pomodoroWindow {
+            pomodoroWindow?.orderOut(nil)
+            pomodoroVM.isVisible = false
+        }
     }
 }
