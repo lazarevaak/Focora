@@ -10,18 +10,9 @@ internal import SwiftUI
 internal struct PomodoroView: View {
     @ObservedObject var viewModel: PomodoroViewModel
 
-    private let gradient = LinearGradient( 
-        gradient: Gradient(colors: [
-            Color(red: 0.67, green: 0.78, blue: 0.87),
-            Color(red: 0.80, green: 0.75, blue: 0.90)
-        ]),
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-
     var body: some View {
         ZStack {
-            gradient
+            FocoraGradients.lightPrimary
                 .ignoresSafeArea()
 
             VStack(spacing: 28) {
@@ -151,7 +142,7 @@ internal struct PomodoroView: View {
             .frame(width: 340, height: 520)
             .background(
                 RoundedRectangle(cornerRadius: 18)
-                    .fill(gradient.opacity(0.92))
+                    .fill(FocoraGradients.lightPrimary.opacity(0.92))
                     .overlay(
                         RoundedRectangle(cornerRadius: 18)
                             .stroke(Color.white.opacity(0.7), lineWidth: 3)

@@ -20,12 +20,12 @@ final class TaskViewModel: ObservableObject {
     @Published var newDueDate: Date = .now
     @Published var isVisible: Bool = false
     @Published var searchText: String = ""
-    @Published var allTags: [TagModel] = []        // ✅ список тегов
-    @Published var selectedTag: TagModel? = nil    // ✅ фильтрация по тегу
-    @Published var isPresentingSheet = false
 
+    @Published var isPresentingSheet = false
     
-    // Calendar integration
+    @Published var allTags: [TagModel] = []
+    @Published var selectedTag: TagModel? = nil
+    
     @Published var showCalendarPermissionAlert = false
     @Published var calendarEvents: [EKEvent] = []
     
@@ -58,7 +58,6 @@ final class TaskViewModel: ObservableObject {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
 
-        // добавляем новые теги в список, если их ещё нет
         for tagName in tags where !allTags.contains(where: { $0.name == tagName }) {
             allTags.append(TagModel(name: tagName))
         }
@@ -66,7 +65,7 @@ final class TaskViewModel: ObservableObject {
 
         let calendar = Calendar(identifier: .gregorian)
         var components = calendar.dateComponents([.year, .month, .day], from: newDueDate)
-        components.timeZone = TimeZone(secondsFromGMT: 0) // ✅ фиксируем UTC
+        components.timeZone = TimeZone(secondsFromGMT: 0)
         newDueDate = calendar.date(from: components)!
         
         let newTask = TaskModel(
@@ -79,7 +78,6 @@ final class TaskViewModel: ObservableObject {
         tasks.append(newTask)
         saveTasks()
 
-        // Reset input fields
         newTitle = ""
         newTags = ""
         newPriority = .medium
@@ -93,6 +91,8 @@ final class TaskViewModel: ObservableObject {
         
         tasks.removeAll { $0.id == task.id }
         saveTasks()
+        
+        cleanupUnusedTags()
     }
 
     func toggleCompletion(for task: TaskModel) {
@@ -106,11 +106,11 @@ final class TaskViewModel: ObservableObject {
     func saveTasks() {
         do {
             let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601   // ✅ теперь используется реально
+            encoder.dateEncodingStrategy = .iso8601   
             let data = try encoder.encode(tasks)
             try data.write(to: tasksURL, options: .atomic)
         } catch {
-            print("⚠️ [TaskViewModel] Failed to save tasks: \(error)")
+            print("[TaskViewModel] Failed to save tasks: \(error)")
         }
     }
 
@@ -119,10 +119,10 @@ final class TaskViewModel: ObservableObject {
         do {
             let data = try Data(contentsOf: tasksURL)
             let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601   // ✅ тоже самое
+            decoder.dateDecodingStrategy = .iso8601   
             tasks = try decoder.decode([TaskModel].self, from: data)
         } catch {
-            print("⚠️ [TaskViewModel] Failed to load tasks: \(error)")
+            print("[TaskViewModel] Failed to load tasks: \(error)")
         }
     }
 
@@ -132,9 +132,22 @@ final class TaskViewModel: ObservableObject {
             let data = try JSONEncoder().encode(allTags)
             try data.write(to: tagsURL, options: .atomic)
         } catch {
-            print("⚠️ [TaskViewModel] Failed to save tags: \(error)")
+            print("[TaskViewModel] Failed to save tags: \(error)")
         }
     }
+    
+    func cleanupUnusedTags() {
+        let usedTagNames = Set(tasks.flatMap { $0.tags })
+
+        let beforeCount = allTags.count
+        allTags.removeAll { !usedTagNames.contains($0.name) }
+
+        if allTags.count != beforeCount {
+            saveTags()
+            print("[TaskViewModel] Cleaned up unused tags.")
+        }
+    }
+
 
     func loadTags() {
         guard FileManager.default.fileExists(atPath: tagsURL.path) else { return }
@@ -142,7 +155,7 @@ final class TaskViewModel: ObservableObject {
             let data = try Data(contentsOf: tagsURL)
             allTags = try JSONDecoder().decode([TagModel].self, from: data)
         } catch {
-            print("⚠️ [TaskViewModel] Failed to load tags: \(error)")
+            print("[TaskViewModel] Failed to load tags: \(error)")
         }
     }
     

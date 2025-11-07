@@ -15,7 +15,6 @@ struct TaskView: View {
     @State private var sortOrder: SortOrder = .newestFirst
     @State private var selectedTags: Set<TagModel> = []
 
-    // для Pomodoro
     @State private var selectedTask: TaskModel?
     @State private var selectedDuration = 1500
     @State private var showDurationPicker = false
@@ -36,9 +35,11 @@ struct TaskView: View {
             content
         }
         .frame(width: 483, height: 560)
-        .background(background)
+        .background(FocoraGradients.windowBackground)
         .cornerRadius(16)
-        .overlay(borderOverlay)
+        .overlay(RoundedRectangle(cornerRadius: 16)
+            .strokeBorder(FocoraGradients.primary, lineWidth: 4)
+            .opacity(0.9))
         .shadow(color: .black.opacity(0.4), radius: 25, y: 4)
         .sheet(isPresented: $showDurationPicker, onDismiss: {
             viewModel.isPresentingSheet = false
@@ -70,18 +71,15 @@ private extension TaskView {
         HStack {
             Text("Task Manager")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(topBarGradient)
+                .foregroundStyle(FocoraGradients.primary)
+            
             Spacer()
 
-            Picker("", selection: $mode) {
-                ForEach(Mode.allCases, id: \.self) { Text($0.rawValue) }
-            }
-            .pickerStyle(.segmented)
-            .frame(width: 220)
+            ModePicker(selection: $mode)
 
             Button(action: { viewModel.importFromCalendar() }) {
                 Image(systemName: "arrow.down.circle")
-                    .foregroundStyle(topBarGradient)
+                    .foregroundStyle(FocoraGradients.primary)
                     .font(.system(size: 16))
             }
             .buttonStyle(.plain)
@@ -89,7 +87,7 @@ private extension TaskView {
 
             Button(action: { viewModel.syncAllWithCalendar() }) {
                 Image(systemName: "arrow.up.circle")
-                    .foregroundStyle(topBarGradient)
+                    .foregroundStyle(FocoraGradients.primary)
                     .font(.system(size: 16))
             }
             .buttonStyle(.plain)
@@ -98,7 +96,7 @@ private extension TaskView {
         .padding(.horizontal, 18)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .background(topBarBackground)
+        .background(FocoraGradients.topBarBackground)
     }
 
     var content: some View {
@@ -183,51 +181,73 @@ private extension TaskView {
     // MARK: Capsule Tag
     func tagCapsule(_ tag: TagModel) -> some View {
         let isSelected = selectedTags.contains(tag)
+        let baseColor = tag.color
+
+        let tagGradient = LinearGradient(
+            colors: [
+                baseColor.opacity(0.9),
+                baseColor.opacity(0.6)
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+
         return Text(tag.name)
             .font(.system(size: 12, weight: .medium))
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? .red : Color.white.opacity(0.08))
+                    .fill(
+                        isSelected
+                        ? AnyShapeStyle(tagGradient)
+                        : AnyShapeStyle(baseColor.opacity(0.08))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(
+                                isSelected
+                                ? AnyShapeStyle(tagGradient)
+                                : AnyShapeStyle(baseColor.opacity(0.1)),
+                                lineWidth: 1.2
+                            )
+                    )
             )
-            .foregroundColor(isSelected ? .black : .white.opacity(0.9))
+            .foregroundColor(isSelected ? .black : baseColor)
             .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(.easeInOut(duration: 0.25)) {
                     if isSelected { selectedTags.remove(tag) }
                     else { selectedTags.insert(tag) }
                 }
             }
     }
 
-    // MARK: Search Section
+
+    // MARK: - Search Section
     var searchSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("Search tasks...", text: $viewModel.searchText)
                 .textFieldStyle(DarkTextFieldStyle())
 
-            HStack {
-                Text("Found: \(filteredAndSortedTasks.count)")
-                    .font(.caption)
-                    .foregroundColor(.white.opacity(0.6))
+            Text("Found: \(filteredAndSortedTasks.count)")
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(FocoraGradients.primary)
 
-                Spacer()
 
-                Picker("Sort", selection: $sortOrder) {
-                    ForEach(SortOrder.allCases, id: \.self) { Text($0.rawValue) }
+            HStack(spacing: 8) {
+                SortPicker(sortOrder: $sortOrder)
+
+                if !viewModel.allTags.isEmpty {
+                    TagPicker(
+                        selectedTag: $viewModel.selectedTag,
+                        tags: viewModel.allTags
+                    )
                 }
-                .pickerStyle(.menu)
-                .frame(width: 150)
-                .padding(3)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(6)
-            }
-
-            if !viewModel.allTags.isEmpty {
-                TagPicker(selectedTag: $viewModel.selectedTag, tags: viewModel.allTags)
             }
         }
     }
+
 
     // MARK: Task List
     var taskList: some View {
@@ -301,10 +321,27 @@ private extension TaskView {
                     }
 
                     if !task.tags.isEmpty {
-                        Text(task.tags.joined(separator: ", "))
-                            .font(.caption)
-                            .foregroundColor(.purple.opacity(0.8))
+                        FlowLayout(spacing: 6) {
+                            ForEach(task.tags, id: \.self) { tagName in
+                                if let tag = viewModel.allTags.first(where: { $0.name == tagName }) {
+                                    Text(tag.name)
+                                        .font(.caption)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(tag.color.opacity(0.2))
+                                        .foregroundColor(tag.color)
+                                        .cornerRadius(4)
+                                } else {
+                                    Text(tagName)
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                        }
+
                     }
+
+
                 }
 
                 Text("Focus: \(pomodoroVM.totalFocusTime(for: task) / 60) min")
@@ -344,7 +381,7 @@ private extension TaskView {
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .stroke(
-                            isSelected ? AnyShapeStyle(topBarGradient) : AnyShapeStyle(Color.clear),
+                            isSelected ? AnyShapeStyle(FocoraGradients.primary) : AnyShapeStyle(Color.clear),
                             lineWidth: 1.5
                         )
                 )
@@ -403,8 +440,6 @@ private extension TaskView {
         .padding()
     }
 
-
-
     private func formatDuration(_ seconds: Int) -> String {
         let hours = seconds / 3600
         let minutes = (seconds % 3600) / 60
@@ -420,92 +455,4 @@ private extension TaskView {
     }
 }
 
-// MARK: - Styles
-private extension TaskView {
-    var topBarGradient: LinearGradient {
-        LinearGradient(
-            colors: [Color(red: 0.72, green: 0.82, blue: 0.93),
-                     Color(red: 0.80, green: 0.75, blue: 0.90)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
 
-    var topBarBackground: LinearGradient {
-        LinearGradient(
-            colors: [Color(red: 0.12, green: 0.13, blue: 0.16),
-                     Color(red: 0.09, green: 0.10, blue: 0.12)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    var background: LinearGradient {
-        LinearGradient(
-            colors: [Color(red: 0.07, green: 0.08, blue: 0.10),
-                     Color(red: 0.12, green: 0.13, blue: 0.15)],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    var borderOverlay: some View {
-        RoundedRectangle(cornerRadius: 16)
-            .strokeBorder(topBarGradient, lineWidth: 4)
-            .opacity(0.9)
-    }
-}
-
-// MARK: - TagPicker
-struct TagPicker: View {
-    @Binding var selectedTag: TagModel?
-    let tags: [TagModel]
-
-    private var gradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(red: 0.72, green: 0.82, blue: 0.93),
-                Color(red: 0.80, green: 0.75, blue: 0.90)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Filter by tag")
-                .font(.caption2)
-                .foregroundColor(.white.opacity(0.65))
-
-            ZStack {
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.white.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(gradient, lineWidth: 1.2)
-                    )
-
-                HStack(spacing: 6) {
-                    Image(systemName: "tag.fill")
-                        .foregroundColor(Color(red: 0.78, green: 0.86, blue: 0.96))
-                        .font(.system(size: 12, weight: .semibold))
-
-                    Picker("", selection: $selectedTag) {
-                        Text("All").tag(TagModel?.none)
-                        ForEach(tags, id: \.id) { tag in
-                            Text(tag.name).tag(TagModel?.some(tag))
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.menu)
-                    .frame(height: 26)
-                    .colorScheme(.dark)
-                    .tint(Color(red: 0.75, green: 0.80, blue: 0.94))
-                }
-                .padding(.horizontal, 8)
-            }
-            .frame(width: 180, height: 30)
-        }
-    }
-}

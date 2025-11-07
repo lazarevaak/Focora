@@ -16,7 +16,7 @@ struct ClipboardView: View {
             historyList
         }
         .frame(width: 500, height: 360)
-        .background(background)
+        .background(FocoraGradients.windowBackground )
         .cornerRadius(18)
         .overlay(borderOverlay)
         .shadow(color: .black.opacity(0.4), radius: 25, y: 4)
@@ -30,7 +30,7 @@ private extension ClipboardView {
             HStack {
                 Text("Clipboard History")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(topBarGradient)
+                    .foregroundStyle(FocoraGradients.primary)
                 Spacer()
             }
             
@@ -51,7 +51,7 @@ private extension ClipboardView {
         .padding(.horizontal, 18)
         .padding(.top, 12)
         .padding(.bottom, 8)
-        .background(topBarBackground)
+        .background(FocoraGradients.topBarBackground)
     }
 
     var historyList: some View {
@@ -89,9 +89,10 @@ private extension ClipboardView {
                     highlightedText(item.content, searchText: searchText)
                         .font(.system(size: 15))
                         .lineLimit(2)
+                        .foregroundColor(.white)
                     Text(item.date.formatted(date: .omitted, time: .shortened))
                         .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
+                        .foregroundColor(.white.opacity(0.2))
                 }
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -122,7 +123,7 @@ private extension ClipboardView {
         HistoryItemView(
             item: item,
             searchText: viewModel.searchText,
-            topBarGradient: topBarGradient,
+            topBarGradient: FocoraGradients.primary,
             viewModel: viewModel
         )
     }
@@ -158,39 +159,6 @@ func highlightedText(_ text: String, searchText: String) -> some View {
 
 // MARK: - Styles
 private extension ClipboardView {
-    var topBarGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(red: 0.72, green: 0.82, blue: 0.93),
-                Color(red: 0.80, green: 0.75, blue: 0.90)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    var topBarBackground: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(red: 0.12, green: 0.13, blue: 0.16),
-                Color(red: 0.09, green: 0.10, blue: 0.12)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
-    var background: LinearGradient {
-        LinearGradient(
-            gradient: Gradient(colors: [
-                Color(red: 0.07, green: 0.08, blue: 0.10),
-                Color(red: 0.12, green: 0.13, blue: 0.15)
-            ]),
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-
     var borderOverlay: some View {
         RoundedRectangle(cornerRadius: 16)
             .strokeBorder(

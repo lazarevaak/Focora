@@ -110,7 +110,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func setupTaskManagerWindowIfNeeded() {
         guard taskManagerWindow == nil else { return }
 
-        // ✅ передаём общий PomodoroViewModel через environmentObject
         let view = TaskView(viewModel: taskManagerVM)
             .environmentObject(pomodoroVM)
         let hosting = NSHostingController(rootView: view)
