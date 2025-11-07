@@ -26,27 +26,33 @@ struct ClipboardView: View {
 // MARK: - Subviews
 private extension ClipboardView {
     var topBar: some View {
-        VStack(spacing: 8) {
-            HStack {
-                Text("Clipboard History")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(FocoraGradients.primary)
-                Spacer()
-            }
+        HStack {
+            Text("Clipboard History")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(FocoraGradients.primary)
             
-            TextField("Search...", text: $viewModel.searchText)
-                .padding(6)
-                .font(.system(size: 13))
-                .foregroundColor(.white)
-                .textFieldStyle(.plain)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.white.opacity(0.08))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 6)
-                        .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                )
+            Spacer()
+            
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.white.opacity(0.6))
+                    .font(.system(size: 13))
+                
+                TextField("Search...", text: $viewModel.searchText)
+                    .font(.system(size: 13))
+                    .foregroundColor(.white)
+                    .textFieldStyle(.plain)
+                    .frame(width: 150)
+            }
+            .padding(6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.white.opacity(0.08))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            )
         }
         .padding(.horizontal, 18)
         .padding(.top, 12)
@@ -135,26 +141,35 @@ func highlightedText(_ text: String, searchText: String) -> some View {
         return AnyView(Text(text))
     }
     
+    var attributedString = AttributedString(text)
     let lowercasedText = text.lowercased()
     let lowercasedQuery = searchText.lowercased()
     
-    guard let range = lowercasedText.range(of: lowercasedQuery) else {
-        return AnyView(Text(text))
+    var searchRange = lowercasedText.startIndex..<lowercasedText.endIndex
+    while let range = lowercasedText.range(of: lowercasedQuery, range: searchRange) {
+        let startOffset = lowercasedText.distance(from: lowercasedText.startIndex, to: range.lowerBound)
+        let length = lowercasedText.distance(from: range.lowerBound, to: range.upperBound)
+        
+        if startOffset >= 0 && length > 0 && startOffset + length <= text.count {
+            let startIndex = attributedString.index(attributedString.startIndex, offsetByCharacters: startOffset)
+            let endIndex = attributedString.index(startIndex, offsetByCharacters: length)
+            
+            if startIndex < endIndex && endIndex <= attributedString.endIndex {
+                attributedString[startIndex..<endIndex].backgroundColor = .yellow
+                attributedString[startIndex..<endIndex].foregroundColor = .black
+            }
+        }
+        
+        if let nextStart = range.upperBound < lowercasedText.endIndex
+            ? lowercasedText.index(range.upperBound, offsetBy: 0, limitedBy: lowercasedText.endIndex)
+            : nil {
+            searchRange = nextStart..<lowercasedText.endIndex
+        } else {
+            break
+        }
     }
     
-    let beforeMatch = String(text[..<range.lowerBound])
-    let match = String(text[range])
-    let afterMatch = String(text[range.upperBound...])
-    
-    return AnyView(
-        HStack(spacing: 0) {
-            Text(beforeMatch)
-            Text(match)
-                .foregroundColor(.yellow)
-                .fontWeight(.bold)
-            Text(afterMatch)
-        }
-    )
+    return AnyView(Text(attributedString))
 }
 
 // MARK: - Styles

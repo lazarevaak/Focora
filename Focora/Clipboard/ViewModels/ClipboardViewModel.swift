@@ -17,8 +17,16 @@ final class ClipboardViewModel: ObservableObject {
     private var timer: Timer?
     private var lastChangeCount = NSPasteboard.general.changeCount
     private var isPasting = false
+    
+    private let storageURL: URL = {
+        let folder = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("Focora", isDirectory: true)
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        return folder.appendingPathComponent("clipboard.json")
+    }()
 
     init() {
+        loadHistory()
         startMonitoring()
     }
 
@@ -45,6 +53,26 @@ final class ClipboardViewModel: ObservableObject {
         if history.first?.content == string { return }
         history.insert(ClipboardItem(content: string, date: Date()), at: 0)
         if history.count > 20 { history.removeLast() }
+        saveHistory()
+    }
+    
+    private func saveHistory() {
+        do {
+            let data = try JSONEncoder().encode(history)
+            try data.write(to: storageURL, options: .atomic)
+        } catch {
+            print("[ClipboardViewModel] Failed to save history: \(error)")
+        }
+    }
+
+    private func loadHistory() {
+        guard FileManager.default.fileExists(atPath: storageURL.path) else { return }
+        do {
+            let data = try Data(contentsOf: storageURL)
+            history = try JSONDecoder().decode([ClipboardItem].self, from: data)
+        } catch {
+            print("[ClipboardViewModel] Failed to load history: \(error)")
+        }
     }
     
     var filteredHistory: [ClipboardItem] {
