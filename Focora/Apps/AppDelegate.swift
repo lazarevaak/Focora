@@ -95,6 +95,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         configureForCustomAppearance(window)
         window.contentViewController = hosting
+        
+        window.contentView?.layer?.cornerRadius = 18
+        window.contentView?.layer?.masksToBounds = true
+        
         window.level = .statusBar
         window.center()
         window.delegate = self
@@ -120,6 +124,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         configureForCustomAppearance(window)
         window.contentViewController = hosting
+        
+        window.contentView?.layer?.cornerRadius = 18
+        window.contentView?.layer?.masksToBounds = true
+        
         window.level = .statusBar
         window.center()
         window.delegate = self
@@ -143,6 +151,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         configureForCustomAppearance(window)
         window.contentViewController = hosting
+        
+        window.contentView?.layer?.cornerRadius = 18
+        window.contentView?.layer?.masksToBounds = true
+        
         window.level = .statusBar
         window.center()
         window.makeKeyAndOrderFront(nil)

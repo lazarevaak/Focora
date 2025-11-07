@@ -12,9 +12,11 @@ internal import Combine
 final class ClipboardViewModel: ObservableObject {
     @Published var history: [ClipboardItem] = []
     @Published var isVisible: Bool = false
+    @Published var searchText: String = ""
 
     private var timer: Timer?
     private var lastChangeCount = NSPasteboard.general.changeCount
+    private var isPasting = false
 
     init() {
         startMonitoring()
@@ -27,6 +29,9 @@ final class ClipboardViewModel: ObservableObject {
     }
 
     private func checkPasteboard() {
+        
+        guard !isPasting else { return }
+        
         let pb = NSPasteboard.general
         guard pb.changeCount != lastChangeCount else { return }
         lastChangeCount = pb.changeCount
@@ -41,11 +46,24 @@ final class ClipboardViewModel: ObservableObject {
         history.insert(ClipboardItem(content: string, date: Date()), at: 0)
         if history.count > 20 { history.removeLast() }
     }
+    
+    var filteredHistory: [ClipboardItem] {
+        guard !searchText.isEmpty else { return history }
+        
+        let query = searchText.lowercased()
+        return history.filter { item in
+            item.content.lowercased().contains(query)
+        }
+    }
 
     func paste(_ item: ClipboardItem) {
+        isPasting = true
+        
         let pb = NSPasteboard.general
         pb.clearContents()
         pb.setString(item.content, forType: .string)
+        
+        lastChangeCount = pb.changeCount
 
         let src = CGEventSource(stateID: .combinedSessionState)
         let vDown = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: true)
@@ -55,5 +73,9 @@ final class ClipboardViewModel: ObservableObject {
         vUp?.flags = .maskCommand
         vDown?.post(tap: .cgAnnotatedSessionEventTap)
         vUp?.post(tap: .cgAnnotatedSessionEventTap)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+           self?.isPasting = false
+       }
     }
 }
