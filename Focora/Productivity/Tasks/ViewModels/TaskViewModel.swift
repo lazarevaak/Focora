@@ -22,6 +22,8 @@ final class TaskViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var allTags: [TagModel] = []        // ✅ список тегов
     @Published var selectedTag: TagModel? = nil    // ✅ фильтрация по тегу
+    @Published var isPresentingSheet = false
+
     
     // Calendar integration
     @Published var showCalendarPermissionAlert = false
@@ -62,6 +64,11 @@ final class TaskViewModel: ObservableObject {
         }
         saveTags()
 
+        let calendar = Calendar(identifier: .gregorian)
+        var components = calendar.dateComponents([.year, .month, .day], from: newDueDate)
+        components.timeZone = TimeZone(secondsFromGMT: 0) // ✅ фиксируем UTC
+        newDueDate = calendar.date(from: components)!
+        
         let newTask = TaskModel(
             title: trimmed,
             priority: newPriority,
@@ -98,7 +105,9 @@ final class TaskViewModel: ObservableObject {
     // MARK: - Persistence
     func saveTasks() {
         do {
-            let data = try JSONEncoder().encode(tasks)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601   // ✅ теперь используется реально
+            let data = try encoder.encode(tasks)
             try data.write(to: tasksURL, options: .atomic)
         } catch {
             print("⚠️ [TaskViewModel] Failed to save tasks: \(error)")
@@ -109,12 +118,14 @@ final class TaskViewModel: ObservableObject {
         guard FileManager.default.fileExists(atPath: tasksURL.path) else { return }
         do {
             let data = try Data(contentsOf: tasksURL)
-            let decoded = try JSONDecoder().decode([TaskModel].self, from: data)
-            tasks = decoded
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601   // ✅ тоже самое
+            tasks = try decoder.decode([TaskModel].self, from: data)
         } catch {
             print("⚠️ [TaskViewModel] Failed to load tasks: \(error)")
         }
     }
+
 
     func saveTags() {
         do {

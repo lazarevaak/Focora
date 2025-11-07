@@ -8,6 +8,7 @@
 import AppKit
 internal import SwiftUI
 import Carbon.HIToolbox
+import UserNotifications
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let catalog = LauncherViewModel()
@@ -20,10 +21,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private var taskManagerWindow: NSWindow?
     private var pomodoroWindow: NSWindow?
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    func applicationWillFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        NSApp.windows.forEach { $0.close() }
+    }
+    
+    // MARK: - App entry
+    func applicationDidFinishLaunching(_ notification: Notification) {
         setupLauncherWindow()
         setupHotKeys()
+        setupNotifications()
+    }
+
+    // MARK: - Notification setup
+    private func setupNotifications() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error = error {
+                print("⚠️ Notification authorization failed: \(error)")
+            } else if !granted {
+                print("⚠️ Notifications not granted by user.")
+            }
+        }
     }
 
     // MARK: - Setup Launcher Window
@@ -88,9 +106,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private func setupTaskManagerWindowIfNeeded() {
         guard taskManagerWindow == nil else { return }
 
+        // ✅ передаём общий PomodoroViewModel через environmentObject
         let view = TaskView(viewModel: taskManagerVM)
+            .environmentObject(pomodoroVM)
         let hosting = NSHostingController(rootView: view)
-        
+
         let window = FocusableWindow(
             contentRect: NSRect(x: 0, y: 0, width: 600, height: 120),
             styleMask: [.borderless, .fullSizeContentView],
@@ -125,6 +145,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.contentViewController = hosting
         window.level = .statusBar
         window.center()
+        window.makeKeyAndOrderFront(nil)
         window.delegate = self
 
         pomodoroWindow = window
@@ -209,6 +230,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             taskManagerVM.isVisible = true
         }
     }
+
+
 
     private func togglePomodoro() {
         setupPomodoroWindowIfNeeded()
@@ -299,28 +322,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-
             if let newKey = NSApp.keyWindow,
                [self.launcherWindow,
                 self.clipboardWindow,
                 self.taskManagerWindow,
                 self.pomodoroWindow].contains(where: { $0 === newKey }) {
-                // Фокус просто перешёл на другое наше окно — ничего не закрываем.
                 return
             }
 
-            if window === self.launcherWindow {
+            switch window {
+            case self.launcherWindow:
                 window.orderOut(nil)
-            } else if window === self.clipboardWindow {
+
+            case self.clipboardWindow:
                 self.clipboardWindow?.orderOut(nil)
                 self.clipboardVM.isVisible = false
-            } else if window === self.taskManagerWindow {
+
+            case self.taskManagerWindow:
+                if self.taskManagerVM.isPresentingSheet {
+                    return
+                }
                 self.taskManagerWindow?.orderOut(nil)
                 self.taskManagerVM.isVisible = false
-            } else if window === self.pomodoroWindow {
+
+            case self.pomodoroWindow:
                 self.pomodoroWindow?.orderOut(nil)
                 self.pomodoroVM.isVisible = false
+
+            default:
+                break
             }
         }
     }
+
 }
