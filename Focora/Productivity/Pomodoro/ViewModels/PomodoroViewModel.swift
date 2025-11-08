@@ -37,6 +37,15 @@ final class PomodoroViewModel: ObservableObject {
 
     // MARK: - Init
     init() {
+        blockedApps = AppBlockStorage.load()
+        
+        $blockedApps
+            .dropFirst()
+            .sink { newValue in
+                AppBlockStorage.save(newValue)
+            }
+            .store(in: &cancellables)
+        
         // Разрешения для уведомлений
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
             if let error = error {
