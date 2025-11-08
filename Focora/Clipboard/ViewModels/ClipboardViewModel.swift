@@ -106,4 +106,9 @@ final class ClipboardViewModel: ObservableObject {
            self?.isPasting = false
        }
     }
+    
+    func deleteItem(_ item: ClipboardItem) {
+        history.removeAll { $0.id == item.id }
+        saveHistory()
+    }
 }
