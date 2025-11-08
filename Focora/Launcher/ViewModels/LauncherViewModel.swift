@@ -110,7 +110,7 @@ final class LauncherViewModel: ObservableObject {
             CommandItem(icon: "XcodeIcon", title: "Open Xcode", keywords: ["xcode", "ide", "apple", "development"]) {
                 if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.dt.Xcode") {
                     NSWorkspace.shared.openApplication(at: url, configuration: .init())
-                 }
+                }
             },
             CommandItem(icon: "PomodoroIcon", title: "Pomodoro", keywords: ["pomodoro", "timer", "focus"]) {
                 NotificationCenter.default.post(name: NSNotification.Name("ShowPomodoro"), object: nil)
