@@ -87,38 +87,50 @@ private extension ClipboardView {
         @State private var isHovered = false
         
         var body: some View {
-            Button {
-                viewModel.paste(item)
-                viewModel.isVisible = false
-            } label: {
-                VStack(alignment: .leading, spacing: 2) {
-                    highlightedText(item.content, searchText: searchText)
-                        .font(.system(size: 15))
-                        .lineLimit(2)
-                        .foregroundColor(.white)
-                    Text(item.date.formatted(date: .omitted, time: .shortened))
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.2))
+            HStack(alignment: .top, spacing: 10) {
+                Button {
+                    viewModel.paste(item)
+                    viewModel.isVisible = false
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        highlightedText(item.content, searchText: searchText)
+                            .font(.system(size: 15))
+                            .lineLimit(2)
+                            .foregroundColor(.white)
+                        Text(item.date.formatted(date: .omitted, time: .shortened))
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.6))
+                    }
                 }
-                .padding(10)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(
-                            isHovered
-                            ? Color(red: 0.70, green: 0.80, blue: 0.92).opacity(0.15)
-                            : Color.white.opacity(0.05)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(
-                                    isHovered ? AnyShapeStyle(topBarGradient) : AnyShapeStyle(Color.clear),
-                                    lineWidth: 1.5
-                                )
-                        )
-                )
+                .buttonStyle(.plain)
+                
+                Spacer()
+                
+                Button(role: .destructive, action: {
+                    viewModel.deleteItem(item)
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.white.opacity(0.6))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(
+                        isHovered
+                        ? Color(red: 0.70, green: 0.80, blue: 0.92).opacity(0.15)
+                        : Color.white.opacity(0.05)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(
+                                isHovered ? AnyShapeStyle(topBarGradient) : AnyShapeStyle(Color.clear),
+                                lineWidth: 1.5
+                            )
+                    )
+            )
             .onHover { hovering in
                 isHovered = hovering
             }
