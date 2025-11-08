@@ -8,7 +8,7 @@
 import Foundation
 internal import SwiftUI
 internal import Combine
-import UserNotifications
+@preconcurrency import UserNotifications
 import AppKit
 
 @MainActor
@@ -56,7 +56,7 @@ final class PomodoroViewModel: ObservableObject {
         }
 
         // Асинхронное сканирование приложений
-        Task { await scanApplications() }
+        Task { scanApplications() }
 
         loadSessions()
         updateTotalFocusTime()
@@ -179,7 +179,11 @@ final class PomodoroViewModel: ObservableObject {
             quitBlockedApps()
             focusMonitorTimer?.invalidate()
             focusMonitorTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-                self?.quitBlockedApps()
+                guard let self else { return }
+
+                Task { @MainActor in
+                    self.quitBlockedApps()
+                }
             }
 
         } else {
@@ -264,30 +268,31 @@ final class PomodoroViewModel: ObservableObject {
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             guard let self else { return }
 
-            if self.remainingTime > 0 {
-                self.remainingTime -= 1
-                if self.remainingTime % 60 == 0 {
-                    self.updateTotalFocusTime()
-                }
-            } else {
-                withAnimation(.easeInOut(duration: 1.0)) {
-                    self.remainingTime = 0
-                }
+            Task { @MainActor in
+                if self.remainingTime > 0 {
+                    self.remainingTime -= 1
+                    if self.remainingTime % 60 == 0 {
+                        self.updateTotalFocusTime()
+                    }
+                } else {
+                    self.timer?.invalidate()
+                    self.isRunning = false
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    self.completeSession()
-                    self.notify()
-                    self.reset()
+                    withAnimation(.easeInOut(duration: 1.0)) {
+                        self.remainingTime = 0
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.completeSession()
+                        self.notify()
+                        self.reset()
+                    }
                 }
             }
         }
     }
 
-
-
-
-
-    private func scanApplications() async {
+    private func scanApplications() {
         let fm = FileManager.default
         let dirs = [
             URL(fileURLWithPath: "/Applications"),
@@ -311,8 +316,10 @@ final class PomodoroViewModel: ObservableObject {
 
         let ignored = ["Finder", "Dock", "System Settings", "Terminal", "Activity Monitor"]
         let unique = Array(Set(found)).filter { !ignored.contains($0.name) }.sorted { $0.name < $1.name }
-        
-        await MainActor.run { self.availableApps = unique }
+
+        Task { @MainActor in
+            self.availableApps = unique
+        }
     }
 
 

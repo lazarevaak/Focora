@@ -85,10 +85,15 @@ final class CalendarManager: ObservableObject {
             let status = EKEventStore.authorizationStatus(for: .event)
             
             switch status {
-            case .authorized:
+                
+            case .authorized, .fullAccess:
                 hasCalendarAccess = true
                 loadCalendars()
                 return true
+                
+            case .writeOnly:
+                hasCalendarAccess = false
+                return false
                 
             case .denied, .restricted:
                 hasCalendarAccess = false
