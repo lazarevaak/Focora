@@ -293,99 +293,14 @@ private extension TaskView {
     func taskItem(_ task: TaskModel) -> some View {
         let isSelected = selectedTask?.id == task.id
 
-        return HStack(alignment: .top, spacing: 10) {
-            Button(action: { viewModel.toggleCompletion(for: task) }) {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(task.isCompleted
-                                     ? Color(red: 0.72, green: 0.82, blue: 0.93)
-                                     : .white.opacity(0.6))
-                    .font(.system(size: 18))
-            }
-            .buttonStyle(.plain)
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text(task.title)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundColor(.white)
-                    .strikethrough(task.isCompleted)
-
-                HStack(spacing: 8) {
-                    Text("Priority: \(task.priority.rawValue)")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-
-                    if let date = task.dueDate {
-                        Text(date, style: .date)
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-
-                    if !task.tags.isEmpty {
-                        FlowLayout(spacing: 6) {
-                            ForEach(task.tags, id: \.self) { tagName in
-                                if let tag = viewModel.allTags.first(where: { $0.name == tagName }) {
-                                    Text(tag.name)
-                                        .font(.caption)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(tag.color.opacity(0.2))
-                                        .foregroundColor(tag.color)
-                                        .cornerRadius(4)
-                                } else {
-                                    Text(tagName)
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                        }
-
-                    }
-
-
-                }
-
-                Text("Focus: \(pomodoroVM.totalFocusTime(for: task) / 60) min")
-                    .font(.caption2)
-                    .foregroundColor(.white.opacity(0.7))
-            }
-
-            Spacer()
-
-            if !task.isSyncedWithCalendar && task.dueDate != nil {
-                Button {
-                    viewModel.exportToCalendar(task)
-                } label: {
-                    Image(systemName: "calendar.badge.plus")
-                        .foregroundColor(.blue.opacity(0.8))
-                }
-                .buttonStyle(.plain)
-                .help("Добавить в календарь")
-            }
-
-            Button(role: .destructive) {
-                viewModel.deleteTask(task)
-            } label: {
-                Image(systemName: "trash")
-                    .foregroundColor(.white.opacity(0.6))
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(
-                    isSelected
-                    ? Color(red: 0.70, green: 0.80, blue: 0.92).opacity(0.15)
-                    : Color.white.opacity(0.05)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(
-                            isSelected ? AnyShapeStyle(FocoraGradients.primary) : AnyShapeStyle(Color.clear),
-                            lineWidth: 1.5
-                        )
-                )
-
+        return TaskRowView(
+            task: task,
+            isSelected: isSelected,
+            allTags: viewModel.allTags,
+            totalFocusTime: pomodoroVM.totalFocusTime(for: task),
+            onToggleCompletion: { viewModel.toggleCompletion(for: task) },
+            onDelete: { viewModel.deleteTask(task) },
+            onExport: { viewModel.exportToCalendar(task) }
         )
         .onTapGesture {
             if isSelected {
@@ -396,6 +311,7 @@ private extension TaskView {
         }
         .animation(.easeInOut(duration: 0.2), value: selectedTask?.id)
     }
+
 
     var durationPicker: some View {
         VStack(spacing: 20) {
@@ -427,7 +343,7 @@ private extension TaskView {
 
                 Button("Start Focus") {
                     guard let task = selectedTask else { return }
-                    pomodoroVM.start(for: task, duration: selectedDuration)
+                    pomodoroVM.toggleRunning(for: task, duration: selectedDuration)
                     showDurationPicker = false
                 }
                 .buttonStyle(.borderedProminent)
@@ -454,5 +370,3 @@ private extension TaskView {
         }
     }
 }
-
-
