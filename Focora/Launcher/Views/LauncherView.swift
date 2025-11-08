@@ -14,6 +14,12 @@ struct LauncherView: View {
     var body: some View {
         VStack(spacing: 16) {
             searchField
+            
+            // Горизонтальные кнопки окон приложения
+            if viewModel.query.isEmpty {
+                windowCommandsRow
+                    .padding(.horizontal)
+            }
     
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -28,16 +34,51 @@ struct LauncherView: View {
                     }
                 }
             }
+            .frame(maxHeight: 359)
         }
-        .padding(.bottom, 20)
+        .padding(.bottom, 16)
         .background(background)
         .cornerRadius(16)
-        .frame(width: 600, height: 500)
+        .frame(width: 600)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
 // MARK: - Subviews
 private extension LauncherView {
+    // MARK: - Window commands row
+    var windowCommandsRow: some View {
+        HStack(spacing: 12) {
+            ForEach(viewModel.windowCommands, id: \.id) { command in
+                windowCommandButton(for: command)
+            }
+        }
+    }
+    
+    func windowCommandButton(for command: CommandItem) -> some View {
+        Button {
+            command.run()
+            isVisible = false
+        } label: {
+            VStack(spacing: 8) {
+                Image(command.icon)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 40, height: 40)
+                Text(command.title)
+                    .foregroundColor(.white)
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 5)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white.opacity(0.2))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+    
     var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")

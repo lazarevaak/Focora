@@ -13,10 +13,12 @@ internal import Combine
 final class LauncherViewModel: ObservableObject {
     @Published var query: String = ""
     @Published var commands: [CommandItem] = []
+    @Published var windowCommands: [CommandItem] = []
     @Published var apps: [CommandItem] = []
     
     init() {
         loadStaticCommands()
+        loadWindowCommands()
         Task { await scanApplications() }
     }
     
@@ -111,7 +113,13 @@ final class LauncherViewModel: ObservableObject {
                 if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.dt.Xcode") {
                     NSWorkspace.shared.openApplication(at: url, configuration: .init())
                 }
-            },
+            }
+        ]
+    }
+    
+    // MARK: - Window commands
+    private func loadWindowCommands() {
+        windowCommands = [
             CommandItem(icon: "PomodoroIcon", title: "Pomodoro", keywords: ["pomodoro", "timer", "focus"]) {
                 NotificationCenter.default.post(name: NSNotification.Name("ShowPomodoro"), object: nil)
             },
