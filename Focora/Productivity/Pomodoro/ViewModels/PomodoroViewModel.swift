@@ -325,13 +325,15 @@ final class PomodoroViewModel: ObservableObject {
 
     // MARK: - Do Not Disturb
     private func enableDoNotDisturb(_ enabled: Bool) {
-        let script = """
-        tell application "System Events"
-            tell appearance preferences
-                set dark mode to \(enabled ? "true" : "false")
-            end tell
-        end tell
-        """
-        _ = NSAppleScript(source: script)?.executeAndReturnError(nil)
+        let shortcut = enabled ? "Enable DND" : "Disable DND"
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/shortcuts")
+        process.arguments = ["run", shortcut]
+        do {
+            try process.run()
+            print("[Pomodoro] Focus mode toggled successfully via shortcuts CLI.")
+        } catch {
+            print("[Pomodoro] Error running shortcut:", error.localizedDescription)
+        }
     }
 }
