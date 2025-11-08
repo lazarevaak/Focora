@@ -14,9 +14,11 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
-	<key>LSUIElement</key>
-	<true/>
+	<key>LSBackgroundOnly</key>
+	<false/>
 	<key>NSCalendarsUsageDescription</key>
 	<string>Focora needs access to your calendar to export focus tasks.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Focora needs access to control other applications for Deep Focus mode.</string>
 </dict>
 </plist>
