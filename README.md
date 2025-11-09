@@ -9,8 +9,7 @@ Focora помогает сохранять фокус, управлять вре
 
 > Название происходит от *focus* и *ora* (“время”) — символ концентрации и управления временем.
 
-### **Презентация** 
-[Открыть в Figma](https://www.figma.com/slides/XOCqTpRRrHM8IPABpBwbQm/Untitled?node-id=71-1551&t=zGpYSVYleeyzEBba-0)
+### **Презентация:** [Открыть в Figma](https://www.figma.com/slides/XOCqTpRRrHM8IPABpBwbQm/Untitled?node-id=71-1551&t=zGpYSVYleeyzEBba-0)
 
 ---
 
