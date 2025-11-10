@@ -1,4 +1,4 @@
-### **Focora**
+## **Focora**
 
 **Focora** — это приложение для продуктивности на **macOS**, объединяющее  
 **Quick Launcher**, **Task Manager**, **Pomodoro Timer** и **Clipboard Manager** в 4 компактных окон.
